@@ -1,0 +1,123 @@
+{
+  "project_name": "Parishram Engineering - Modern Industrial B2B & Quote Cart Platform",
+  "brand_identity": {
+    "company_name": "PARISHRAM ENGINEERING",
+    "tagline": "Manufacturer & Supplier of All Types of Auto Parts & S.S. Nipple Pipe Fittings",
+    "emotional_archetype": "The Precision Swiss Industrial & Performance Pro",
+    "art_direction": "High-end Swiss Industrial Engineering. Clean, surgical, tactile, micro-machined aesthetics. High-contrast slate and metallic titanium base with vibrant technical safety amber accents. Grid-structured layout, numbered technical chapters, masked line reveal typography, kinetic marquee ribbons, and spotlight product frames.",
+    "theme_mode": "Hybrid Light/Dark with Dark Hero and Technical Titanium Light Body sections"
+  },
+  "typography": {
+    "font_family_pairing": {
+      "headings": "Cabinet Grotesk / Outfit / Barlow Condensed (Tight tracking, uppercase technical weight)",
+      "body": "Inter / DM Sans (High legibility, balanced neutral line height)",
+      "mono_specs": "JetBrains Mono / Source Code Pro (For material grades, threads, dimensions, tolerances)"
+    },
+    "scale_rules": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[1.05]",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight uppercase",
+      "h3_subsection": "text-xl sm:text-2xl font-semibold tracking-normal",
+      "h4_card": "text-lg sm:text-xl font-medium",
+      "body": "text-sm sm:text-base text-muted-foreground leading-relaxed",
+      "labels_overline": "text-xs font-mono uppercase tracking-[0.2em] text-amber-500 font-semibold"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#F8FAFC",
+      "foreground": "#0F172A",
+      "card": "#FFFFFF",
+      "card_foreground": "#0F172A",
+      "primary": "#0F172A",
+      "primary_foreground": "#FFFFFF",
+      "accent_amber": "#D97706",
+      "accent_amber_hover": "#B45309",
+      "accent_amber_light": "#FEF3C7",
+      "metallic_slate": "#1E293B",
+      "steel_gray": "#64748B",
+      "silver_border": "#E2E8F0",
+      "dark_surface": "#090D16",
+      "dark_card": "#111827"
+    },
+    "gradients": {
+      "hero_overlay": "linear-gradient(to right, rgba(9, 13, 22, 0.95) 0%, rgba(9, 13, 22, 0.7) 60%, rgba(9, 13, 22, 0.4) 100%)",
+      "metallic_shimmer": "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%)",
+      "accent_glow": "radial-gradient(circle, rgba(217,119,6,0.15) 0%, rgba(0,0,0,0) 70%)"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-slate-900/80 border border-slate-700/50 shadow-2xl",
+    "card_borders": "border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition-colors duration-300",
+    "spotlight_frame": "relative overflow-hidden group before:absolute before:inset-0 before:bg-gradient-to-r before:from-amber-500/10 before:to-transparent before:opacity-0 group-hover:before:opacity-100 transition-opacity duration-300",
+    "grid_borders": "divide-y divide-x divide-slate-200 dark:divide-slate-800"
+  },
+  "layout_and_grids": {
+    "spacing_philosophy": "Generous technical spacing. Section padding py-16 lg:py-24, gap-8 to gap-12 between elements.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "bento_grid": "grid grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-6 lg:gap-8"
+  },
+  "motion_and_interactions": {
+    "smooth_scroll": "Lenis momentum smooth scrolling integrated across all routes",
+    "framer_motion": {
+      "hero_line_reveal": "Staggered masked height/y-clip reveal for each headline line on mount",
+      "scroll_reveal": "framer-motion initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}",
+      "marquee": "Slow editorial drift using framer-motion or CSS keyframe ribbon (gap-16, speed: 25s continuous)"
+    },
+    "micro_interactions": "Button hover lift (-translate-y-0.5), active pressure scale-95, card image zoom on hover (scale-105 duration-500)"
+  },
+  "image_urls": {
+    "hero_background": "https://images.unsplash.com/photo-1666634157070-6fd830fb5672?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "pipe_fittings_category": "https://images.unsplash.com/photo-1642797735471-3e90055c5ff9?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "auto_parts_category": "https://images.unsplash.com/photo-1602664876866-d3b33b77756b?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "cnc_machining_process": "https://images.unsplash.com/photo-1624841970647-87dce8628d72?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "factory_plant": "https://images.unsplash.com/photo-1513828742140-ccaa28f3eda0?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "welding_fabrication": "https://images.unsplash.com/photo-1730584474401-5a03c6d1b2d1?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "quality_testing": "https://images.unsplash.com/photo-1579107821380-a2f5df32d67f?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "products": [
+      {
+        "id": "ss-nipple-hex-304",
+        "title": "S.S. Hex Nipple Pipe Fitting (304 / 316 Grade)",
+        "category": "S.S. Nipple Pipe Fittings",
+        "image": "https://images.unsplash.com/photo-1642797735471-3e90055c5ff9?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "specs": "1/4\" to 4\" NPT/BSP Threads • SCH 40/80 • ISO 9001 Certified"
+      },
+      {
+        "id": "auto-cnc-bushing",
+        "title": "Precision CNC Automotive Bushing & Shaft",
+        "category": "Auto Parts",
+        "image": "https://images.unsplash.com/photo-1602664876866-d3b33b77756b?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "specs": "High-Grade Carbon Steel • Tolerance: ±0.01mm • Heat Treated"
+      },
+      {
+        "id": "ss-barrel-nipple",
+        "title": "Stainless Steel Threaded Barrel Nipple",
+        "category": "S.S. Nipple Pipe Fittings",
+        "image": "https://images.unsplash.com/photo-1665492085149-21fcb2617dba?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "specs": "Seamless SS316L Pipe • Heavy Wall Thickness • 3000 PSI Rating"
+      },
+      {
+        "id": "lathe-machined-flange",
+        "title": "Heavy Machine Machined Steel Flange & Fitting",
+        "category": "Auto Parts",
+        "image": "https://images.unsplash.com/photo-1666634157070-6fd830fb5672?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "specs": "Custom Machined Shaft • OEM Automotive Spec • Zinc Plated Finish"
+      }
+    ]
+  },
+  "key_features_to_build": {
+    "sticky_navbar": "Sticky header with logo ('PARISHRAM ENGINEERING'), links (Home, Products, Industries, Manifesto, Contact), Quote Cart Drawer Trigger with Badge Counter, Account Login/Register link, and amber CTA ('Get a Quote').",
+    "quote_cart_system": "Slide-over drawer + dedicated page for B2B quote cart. Users can adjust quantity, add custom material specs/thread requirements, upload technical drawing file note, and submit instant B2B quote enquiry.",
+    "numbered_manifesto_chapters": "Section with 4 chapters: 01. Micro-Precision Metallurgy, 02. Certified Quality Assurance, 03. Custom OEM Manufacturing, 04. Global B2B Supply Network.",
+    "interactive_spec_calculator": "Engineers can select Pipe Size (NPS), Wall Thickness, and Alloy Grade to dynamically compute estimated weight (kg/m) and burst pressure rating, then append calculation to Quote Cart.",
+    "customer_account": "Login / Register modal or route + User Dashboard showing submitted quote history, enquiry status badge (Under Review, Estimate Ready, Approved), and downloadable PDF quotation summary.",
+    "admin_dashboard": "Admin view at /admin to manage product inventory (add/edit products), view & manage customer quote inquiries, update inquiry status, and view analytics summaries."
+  },
+  "instructions_to_main_agent": [
+    "Use framer-motion for smooth entrance animations and scroll reveals.",
+    "Implement Lenis for smooth momentum scrolling.",
+    "Always add data-testid attributes on interactive components (e.g. data-testid='quote-cart-button', data-testid='submit-enquiry-btn', data-testid='product-card-add').",
+    "Maintain strict high-contrast legibility for all technical text and mono labels.",
+    "Ensure header/navbar background is NEVER fully transparent over scrollable content — use backdrop-blur glassmorphism (e.g., bg-slate-900/90 backdrop-blur-md).",
+    "Provide realistic pre-seeded products (12-18 products spanning S.S. nipples, barrel nipples, hex nipples, auto bushings, shafts, hydraulic fittings, flanges) with real specs and image URLs."
+  ]
+}
