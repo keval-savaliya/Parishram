@@ -1,0 +1,28 @@
+meta {
+  name: Create Product (Admin)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/products
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "S.S. Union Nipple — 304",
+    "category": "S.S. Nipple Pipe Fittings",
+    "grade": "SS 304",
+    "moq": "100 pcs",
+    "unit": "Piece",
+    "image": "",
+    "description": "Demo product created from Bruno.",
+    "specs": ["1/4\" to 2\" BSP", "ISO 9001:2015"],
+    "variants": [
+      { "size": "1/2\"", "price": 70, "stock_quantity": 300, "min_order_quantity": 100, "availability": "In Stock" }
+    ],
+    "featured": false
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Distinct Product Categories (meta)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/products/meta/categories
+  body: none
+  auth: none
+}
+
+docs {
+  Returns distinct category names from products. The canonical list is GET /api/categories.
+}

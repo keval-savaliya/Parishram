@@ -1,0 +1,45 @@
+meta {
+  name: Create Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/orders
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "variant_id": "{{variantId}}",
+        "product_id": "{{productId}}",
+        "title": "S.S. Hex Nipple — 304 Grade",
+        "size": "1/4\"",
+        "qty": 100
+      }
+    ],
+    "address": {
+      "label": "Works",
+      "name": "Test Buyer",
+      "phone": "9999999999",
+      "line1": "Plot 10, MIDC Industrial Area",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411019"
+    },
+    "note": "Deliver before month end"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.order_id) {
+    bru.setEnvVar("orderId", res.body.order_id);
+  }
+}
+
+docs {
+  Server validates stock and deducts it; price is taken from the variant server-side.
+}

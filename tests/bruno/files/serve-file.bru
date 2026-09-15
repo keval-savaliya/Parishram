@@ -1,0 +1,15 @@
+meta {
+  name: Serve Uploaded File
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/files/{{filePath}}
+  body: none
+  auth: none
+}
+
+docs {
+  filePath is auto-set by the Admin Upload Photo response script.
+}

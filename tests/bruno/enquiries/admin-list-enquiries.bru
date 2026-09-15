@@ -1,0 +1,17 @@
+meta {
+  name: Admin List Enquiries
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/admin/enquiries
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.body && res.body.length) {
+    bru.setEnvVar("enquiryId", res.body[0].enquiry_id);
+  }
+}

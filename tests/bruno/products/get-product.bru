@@ -1,0 +1,17 @@
+meta {
+  name: Get Product
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/products/{{productId}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.body && res.body.variants && res.body.variants.length) {
+    bru.setEnvVar("variantId", res.body.variants[0].variant_id);
+  }
+}

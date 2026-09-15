@@ -1,0 +1,17 @@
+meta {
+  name: List Addresses
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/addresses
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.body && res.body.length) {
+    bru.setEnvVar("addressId", res.body[0].address_id);
+  }
+}

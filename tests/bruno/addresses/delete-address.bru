@@ -1,0 +1,11 @@
+meta {
+  name: Delete Address
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/addresses/{{addressId}}
+  body: none
+  auth: none
+}

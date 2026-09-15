@@ -1,0 +1,35 @@
+meta {
+  name: Create Quote Enquiry
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/enquiries
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Test Buyer",
+    "email": "buyer@test.com",
+    "phone": "9999999999",
+    "company": "Test Motors",
+    "message": "Need pricing for bulk supply.",
+    "items": [
+      {
+        "product_id": "{{productId}}",
+        "title": "S.S. Hex Nipple — 304 Grade",
+        "qty": 100,
+        "note": "1/2\" BSP × 100mm"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.enquiry_id) {
+    bru.setEnvVar("enquiryId", res.body.enquiry_id);
+  }
+}

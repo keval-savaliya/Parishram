@@ -1,0 +1,26 @@
+meta {
+  name: Sync Cart
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/cart/sync
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "variant_id": "{{variantId}}",
+        "product_id": "{{productId}}",
+        "title": "S.S. Hex Nipple — 304 Grade",
+        "size": "1/4\"",
+        "price": 45,
+        "qty": 100
+      }
+    ]
+  }
+}

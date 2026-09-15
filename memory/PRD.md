@@ -63,6 +63,10 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 ## Implemented (July 2026) — Cart button on product cards
 - Every product card now has an amber cart button beside Specs / Quote: adds the first in-stock size at its MOQ, toast confirmation, navbar cart badge updates; fully out-of-stock products show an error toast pointing to the quote flow
 
+## Implemented (July 2026) — Bruno API collection
+- tests/bruno/: full Bruno collection (32 requests) covering every backend route — auth (register/login/me/refresh/logout/google), products CRUD + categories + meta, cart get/sync, addresses CRUD, enquiries create/mine/admin-list/admin-status, orders create/mine/admin-list/admin-status, admin stats + photo upload (multipart), contact, file serving
+- Environments: Production (preview URL) + Local (localhost:8001); response scripts auto-capture variantId/addressId/enquiryId/orderId/filePath; README with run order
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.

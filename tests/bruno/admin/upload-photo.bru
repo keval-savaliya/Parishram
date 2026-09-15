@@ -1,0 +1,26 @@
+meta {
+  name: Admin Upload Photo
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/admin/upload
+  body: multipart-form
+  auth: none
+}
+
+body:multipart-form {
+  file: @./assets/sample-product.jpg
+}
+
+script:post-response {
+  if (res.body && res.body.path) {
+    bru.setEnvVar("filePath", res.body.path);
+  }
+}
+
+docs {
+  JPG/PNG/WEBP/GIF up to 5 MB. Drop a sample image at tests/bruno/assets/sample-product.jpg
+  or repoint the file path before running.
+}

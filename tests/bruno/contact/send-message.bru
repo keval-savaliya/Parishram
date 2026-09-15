@@ -1,0 +1,21 @@
+meta {
+  name: Send Contact Message
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/contact
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Test Buyer",
+    "email": "buyer@test.com",
+    "phone": "9999999999",
+    "subject": "Bulk fitting enquiry",
+    "message": "Need 500 hex nipples delivered to Pune."
+  }
+}

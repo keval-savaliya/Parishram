@@ -1,0 +1,23 @@
+meta {
+  name: Update Product (Admin)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/products/{{productId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "title": "S.S. Hex Nipple — 304 Grade",
+    "category": "S.S. Nipple Pipe Fittings",
+    "grade": "SS 304",
+    "moq": "100 pcs",
+    "unit": "Piece",
+    "featured": true,
+    "is_active": true
+  }
+}

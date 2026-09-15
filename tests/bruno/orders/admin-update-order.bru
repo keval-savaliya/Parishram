@@ -1,0 +1,22 @@
+meta {
+  name: Admin Update Order Status
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/orders/{{orderId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "Confirmed"
+  }
+}
+
+docs {
+  Allowed statuses: Pending, Confirmed, Dispatched, Delivered, Cancelled.
+  Setting Cancelled restores stock to the variant.
+}

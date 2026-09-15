@@ -1,0 +1,17 @@
+meta {
+  name: Admin List Orders
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/admin/orders
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.body && res.body.length) {
+    bru.setEnvVar("orderId", res.body[0].order_id);
+  }
+}

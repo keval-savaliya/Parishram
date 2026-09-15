@@ -1,0 +1,18 @@
+meta {
+  name: Login Customer
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "buyer@test.com",
+    "password": "buyer123"
+  }
+}

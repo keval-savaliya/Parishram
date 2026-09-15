@@ -1,0 +1,29 @@
+meta {
+  name: Create Address
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/addresses
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "label": "Works",
+    "name": "Test Buyer",
+    "phone": "9999999999",
+    "line1": "Plot 10, MIDC Industrial Area",
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411019"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.address_id) {
+    bru.setEnvVar("addressId", res.body.address_id);
+  }
+}

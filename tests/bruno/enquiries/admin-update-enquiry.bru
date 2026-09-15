@@ -1,0 +1,21 @@
+meta {
+  name: Admin Update Enquiry Status
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/enquiries/{{enquiryId}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "status": "Estimate Ready"
+  }
+}
+
+docs {
+  Allowed statuses: Under Review, Estimate Ready, Approved, Closed
+}
