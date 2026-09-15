@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, ClipboardList, User, Phone } from "lucide-react";
+import { Menu, X, ClipboardList, User, Phone, ShoppingCart } from "lucide-react";
 import { LogoMark, LogoType } from "./Logo";
 import { useCart } from "../context/CartContext";
+import { useShopCart } from "../context/ShopCartContext";
 import { useAuth } from "../context/AuthContext";
 
 const LINKS = [
@@ -17,6 +18,7 @@ export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { count, setDrawerOpen } = useCart();
+  const { count: shopCount } = useShopCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -73,6 +75,19 @@ export const Navbar = () => {
           </nav>
 
           <div className="flex items-center gap-2.5">
+            <Link
+              to="/cart"
+              className="relative grid h-10 w-10 place-items-center border border-white/15 text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-500"
+              data-testid="shop-cart-button"
+              aria-label="Shopping cart"
+            >
+              <ShoppingCart className="h-[18px] w-[18px]" />
+              {shopCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center bg-white px-1 font-mono text-[10px] font-bold text-slate-950" data-testid="shop-cart-count">
+                  {shopCount}
+                </span>
+              )}
+            </Link>
             <button
               onClick={() => setDrawerOpen(true)}
               className="relative grid h-10 w-10 place-items-center border border-white/15 text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-500"

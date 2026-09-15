@@ -5,9 +5,11 @@ import Lenis from "lenis";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { ShopCartProvider } from "./context/ShopCartContext";
 import { Navbar, MobileCTA } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { CartDrawer } from "./components/CartDrawer";
+import { WhatsAppCTA } from "./components/WhatsAppCTA";
 import { api } from "./lib/api";
 import Home from "./pages/Home";
 import Products from "./pages/Products";
@@ -19,6 +21,8 @@ import Login from "./pages/Login";
 import Account from "./pages/Account";
 import Admin from "./pages/Admin";
 import QuoteCart from "./pages/QuoteCart";
+import Cart from "./pages/Cart";
+import Calculator from "./pages/Calculator";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -95,6 +99,8 @@ function AppRouter() {
         <Route path="/industries" element={<Industries />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/quote" element={<QuoteCart />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/calculator" element={<Calculator />} />
         <Route path="/login" element={<Login />} />
         <Route path="/account" element={<Protected><Account /></Protected>} />
         <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
@@ -122,11 +128,14 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <AppRouter />
-          <Toaster position="top-right" toastOptions={{ style: { borderRadius: 0 } }} />
-        </BrowserRouter>
+        <ShopCartProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <AppRouter />
+            <WhatsAppCTA />
+            <Toaster position="top-right" toastOptions={{ style: { borderRadius: 0 } }} />
+          </BrowserRouter>
+        </ShopCartProvider>
       </CartProvider>
     </AuthProvider>
   );

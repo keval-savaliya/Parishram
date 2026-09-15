@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LogOut, PackageOpen, ShieldCheck } from "lucide-react";
-import { api } from "../lib/api";
+import { LogOut, MapPin, PackageOpen, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Reveal } from "../components/Reveal";
 
@@ -11,6 +12,11 @@ export const StatusBadge = ({ status }) => {
     "Estimate Ready": "border-blue-600/40 bg-blue-50 text-blue-700",
     Approved: "border-emerald-600/40 bg-emerald-50 text-emerald-700",
     Closed: "border-slate-400/40 bg-slate-100 text-slate-600",
+    Pending: "border-amber-600/40 bg-amber-50 text-amber-700",
+    Confirmed: "border-blue-600/40 bg-blue-50 text-blue-700",
+    Dispatched: "border-sky-600/40 bg-sky-50 text-sky-700",
+    Delivered: "border-emerald-600/40 bg-emerald-50 text-emerald-700",
+    Cancelled: "border-red-600/40 bg-red-50 text-red-600",
   };
   return (
     <span className={`inline-block border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em] ${styles[status] || styles["Under Review"]}`} data-testid={`status-badge-${status?.toLowerCase().replace(/\s+/g, "-")}`}>
@@ -19,13 +25,46 @@ export const StatusBadge = ({ status }) => {
   );
 };
 
+const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const inputCls = "h-11 w-full border border-slate-300 bg-white px-3 font-mono text-xs text-slate-900 outline-none placeholder:text-slate-400 focus:border-amber-600";
+const emptyAddr = { label: "Works", name: "", phone: "", line1: "", city: "", state: "", pincode: "" };
+
 export default function Account() {
   const { user, logout } = useAuth();
+  const [tab, setTab] = useState("quotes");
   const [enquiries, setEnquiries] = useState(null);
+  const [orders, setOrders] = useState(null);
+  const [addresses, setAddresses] = useState(null);
+  const [showAddrForm, setShowAddrForm] = useState(false);
+  const [addr, setAddr] = useState(emptyAddr);
+
+  const loadAddresses = () => api.get("/addresses").then(({ data }) => setAddresses(data)).catch(() => setAddresses([]));
 
   useEffect(() => {
     api.get("/enquiries/mine").then(({ data }) => setEnquiries(data)).catch(() => setEnquiries([]));
+    api.get("/orders/mine").then(({ data }) => setOrders(data)).catch(() => setOrders([]));
+    loadAddresses();
   }, []);
+
+  const saveAddress = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/addresses", addr);
+      toast.success("Address saved");
+      setAddr(emptyAddr);
+      setShowAddrForm(false);
+      loadAddresses();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
+  };
+
+  const removeAddress = async (id) => {
+    await api.delete(`/addresses/${id}`).catch(() => {});
+    loadAddresses();
+  };
+
+  const setA = (k) => (e) => setAddr({ ...addr, [k]: e.target.value });
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 pt-32 lg:pt-40" data-testid="account-page">
@@ -58,47 +97,152 @@ export default function Account() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.1}>
-          <h2 className="mt-14 font-display text-2xl font-extrabold uppercase tracking-tight text-slate-900">Quote Enquiry History</h2>
-        </Reveal>
+        <div className="mt-12 flex flex-wrap gap-2" data-testid="account-tabs">
+          {[
+            { k: "quotes", l: "Quote Enquiries" },
+            { k: "orders", l: "Orders" },
+            { k: "addresses", l: "Addresses" },
+          ].map((t) => (
+            <button
+              key={t.k}
+              onClick={() => setTab(t.k)}
+              className={`h-10 border px-5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors ${
+                tab === t.k ? "border-slate-950 bg-slate-950 text-white" : "border-slate-300 bg-white text-slate-600 hover:border-slate-950"
+              }`}
+              data-testid={`account-tab-${t.k}`}
+            >
+              {t.l}
+            </button>
+          ))}
+        </div>
 
-        {enquiries === null ? (
-          <p className="mt-8 font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Loading…</p>
-        ) : enquiries.length === 0 ? (
-          <Reveal delay={0.12}>
-            <div className="mt-6 border border-slate-200 bg-white p-14 text-center" data-testid="enquiries-empty">
-              <PackageOpen className="mx-auto h-10 w-10 text-slate-300" />
-              <p className="mt-4 font-display text-lg font-bold uppercase text-slate-500">No enquiries yet</p>
-              <Link to="/products" className="mt-5 inline-flex h-11 items-center bg-slate-950 px-6 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="account-browse-products">
-                Browse Products
-              </Link>
-            </div>
-          </Reveal>
-        ) : (
-          <div className="mt-6 space-y-4" data-testid="enquiries-list">
-            {enquiries.map((enq, i) => (
-              <Reveal key={enq.enquiry_id} delay={i * 0.05}>
-                <div className="border border-slate-200 bg-white p-6" data-testid={`enquiry-${enq.ref}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <span className="font-mono text-sm font-bold tracking-[0.12em] text-slate-900">{enq.ref}</span>
-                      <span className="ml-3 font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">
-                        {new Date(enq.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                      </span>
+        {tab === "quotes" && (
+          <div className="mt-8">
+            {enquiries === null ? (
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Loading…</p>
+            ) : enquiries.length === 0 ? (
+              <div className="border border-slate-200 bg-white p-14 text-center" data-testid="enquiries-empty">
+                <PackageOpen className="mx-auto h-10 w-10 text-slate-300" />
+                <p className="mt-4 font-display text-lg font-bold uppercase text-slate-500">No enquiries yet</p>
+                <Link to="/products" className="mt-5 inline-flex h-11 items-center bg-slate-950 px-6 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="account-browse-products">
+                  Browse Products
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4" data-testid="enquiries-list">
+                {enquiries.map((enq) => (
+                  <div key={enq.enquiry_id} className="border border-slate-200 bg-white p-6" data-testid={`enquiry-${enq.ref}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <span className="font-mono text-sm font-bold tracking-[0.12em] text-slate-900">{enq.ref}</span>
+                        <span className="ml-3 font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">
+                          {new Date(enq.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      <StatusBadge status={enq.status} />
                     </div>
-                    <StatusBadge status={enq.status} />
+                    <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4">
+                      {enq.items?.map((item) => (
+                        <li key={item.product_id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-slate-700">
+                          <span className="font-medium">{item.title}</span>
+                          <span className="font-mono text-xs text-slate-500">× {item.qty}{item.note ? ` · ${item.note}` : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4">
-                    {enq.items?.map((item) => (
-                      <li key={item.product_id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-slate-700">
-                        <span className="font-medium">{item.title}</span>
-                        <span className="font-mono text-xs text-slate-500">× {item.qty}{item.note ? ` · ${item.note}` : ""}</span>
-                      </li>
-                    ))}
-                  </ul>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "orders" && (
+          <div className="mt-8">
+            {orders === null ? (
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500">Loading…</p>
+            ) : orders.length === 0 ? (
+              <div className="border border-slate-200 bg-white p-14 text-center" data-testid="orders-empty">
+                <PackageOpen className="mx-auto h-10 w-10 text-slate-300" />
+                <p className="mt-4 font-display text-lg font-bold uppercase text-slate-500">No orders yet</p>
+                <Link to="/products" className="mt-5 inline-flex h-11 items-center bg-slate-950 px-6 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="account-shop-products">
+                  Shop Products
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4" data-testid="orders-list">
+                {orders.map((ord) => (
+                  <div key={ord.order_id} className="border border-slate-200 bg-white p-6" data-testid={`order-${ord.ref}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <span className="font-mono text-sm font-bold tracking-[0.12em] text-slate-900">{ord.ref}</span>
+                        <span className="ml-3 font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">
+                          {new Date(ord.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                      </div>
+                      <StatusBadge status={ord.status} />
+                    </div>
+                    <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4">
+                      {ord.items?.map((item) => (
+                        <li key={item.variant_id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-slate-700">
+                          <span className="font-medium">{item.title} — {item.size}</span>
+                          <span className="font-mono text-xs text-slate-500">× {item.qty} @ {inr(item.price)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">{ord.payment_method}</span>
+                      <span className="font-display text-lg font-extrabold text-amber-700">{inr(ord.total_amount)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "addresses" && (
+          <div className="mt-8">
+            <button
+              onClick={() => setShowAddrForm(!showAddrForm)}
+              className="flex h-10 items-center gap-2 bg-amber-600 px-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-amber-500"
+              data-testid="add-address-button"
+            >
+              <Plus className="h-4 w-4" /> Add Address
+            </button>
+            {showAddrForm && (
+              <form onSubmit={saveAddress} className="mt-5 grid gap-3 border border-slate-200 bg-white p-6 sm:grid-cols-2" data-testid="address-form">
+                <input value={addr.label} onChange={setA("label")} placeholder="Label (Works / Plant / Home)" className={inputCls} data-testid="address-label" />
+                <input value={addr.name} onChange={setA("name")} placeholder="Contact name *" required className={inputCls} data-testid="address-name" />
+                <input value={addr.phone} onChange={setA("phone")} placeholder="Phone" className={inputCls} data-testid="address-phone" />
+                <input value={addr.line1} onChange={setA("line1")} placeholder="Address line *" required className={inputCls} data-testid="address-line1" />
+                <input value={addr.city} onChange={setA("city")} placeholder="City *" required className={inputCls} data-testid="address-city" />
+                <input value={addr.state} onChange={setA("state")} placeholder="State *" required className={inputCls} data-testid="address-state" />
+                <input value={addr.pincode} onChange={setA("pincode")} placeholder="Pincode *" required className={inputCls} data-testid="address-pincode" />
+                <button type="submit" className="h-11 bg-slate-950 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="address-save">
+                  Save Address
+                </button>
+              </form>
+            )}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="addresses-list">
+              {(addresses || []).map((a) => (
+                <div key={a.address_id} className="border border-slate-200 bg-white p-5" data-testid={`address-${a.address_id}`}>
+                  <div className="flex items-start justify-between">
+                    <MapPin className="h-4 w-4 text-amber-600" />
+                    <button onClick={() => removeAddress(a.address_id)} className="text-slate-400 hover:text-red-500" data-testid={`address-delete-${a.address_id}`} aria-label="Delete address">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-700">{a.label}</p>
+                  <p className="mt-1.5 text-sm font-semibold text-slate-900">{a.name}</p>
+                  <p className="mt-1 font-mono text-xs leading-relaxed text-slate-600">
+                    {a.line1}, {a.city}, {a.state} — {a.pincode}
+                  </p>
                 </div>
-              </Reveal>
-            ))}
+              ))}
+              {addresses?.length === 0 && !showAddrForm && (
+                <p className="font-mono text-xs uppercase tracking-[0.2em] text-slate-500" data-testid="addresses-empty">No saved addresses</p>
+              )}
+            </div>
           </div>
         )}
       </div>

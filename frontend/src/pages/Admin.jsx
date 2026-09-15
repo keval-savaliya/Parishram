@@ -6,8 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/
 import { StatusBadge } from "./Account";
 
 const STATUSES = ["Under Review", "Estimate Ready", "Approved", "Closed"];
-const emptyForm = { title: "", category: "S.S. Nipple Pipe Fittings", grade: "", moq: "", unit: "Piece", image: "", description: "", specs: "", featured: false };
+const ORDER_STATUSES = ["Pending", "Confirmed", "Dispatched", "Delivered", "Cancelled"];
+const emptyForm = { title: "", category: "S.S. Nipple Pipe Fittings", grade: "", moq: "", unit: "Piece", image: "", description: "", specs: "", variants: "", featured: false };
 
+const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 const inputCls = "h-10 w-full border border-slate-300 bg-white px-3 font-mono text-xs text-slate-900 outline-none focus:border-amber-600";
 
 export default function Admin() {
@@ -15,6 +17,7 @@ export default function Admin() {
   const [stats, setStats] = useState(null);
   const [products, setProducts] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -23,6 +26,7 @@ export default function Admin() {
     api.get("/admin/stats").then(({ data }) => setStats(data)).catch(() => {});
     api.get("/products").then(({ data }) => setProducts(data)).catch(() => {});
     api.get("/admin/enquiries").then(({ data }) => setEnquiries(data)).catch(() => {});
+    api.get("/admin/orders").then(({ data }) => setOrders(data)).catch(() => {});
   };
 
   useEffect(load, []);
@@ -35,13 +39,25 @@ export default function Admin() {
 
   const openEdit = (p) => {
     setEditing(p.product_id);
-    setForm({ ...p, specs: (p.specs || []).join("\n") });
+    setForm({
+      ...p,
+      specs: (p.specs || []).join("\n"),
+      variants: (p.variants || []).map((v) => `${v.size}, ${v.price}, ${v.stock_quantity}`).join("\n"),
+    });
     setDialogOpen(true);
   };
 
   const saveProduct = async (e) => {
     e.preventDefault();
-    const payload = { ...form, specs: form.specs.split("\n").map((s) => s.trim()).filter(Boolean) };
+    const payload = {
+      ...form,
+      specs: form.specs.split("\n").map((s) => s.trim()).filter(Boolean),
+      variants: form.variants
+        .split("\n")
+        .map((l) => l.split(",").map((s) => s.trim()))
+        .filter((p) => p[0])
+        .map((p) => ({ size: p[0], price: parseFloat(p[1]) || 0, stock_quantity: parseInt(p[2]) || 0, min_order_quantity: 1, availability: "In Stock" })),
+    };
     try {
       if (editing) await api.put(`/products/${editing}`, payload);
       else await api.post("/products", payload);
@@ -74,17 +90,28 @@ export default function Admin() {
     }
   };
 
+  const setOrderStatus = async (id, status) => {
+    try {
+      await api.patch(`/admin/orders/${id}`, { status });
+      setOrders((prev) => prev.map((o) => (o.order_id === id ? { ...o, status } : o)));
+      toast.success("Order status updated");
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 pt-32 lg:pt-40" data-testid="admin-page">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="eyebrow">Admin Console</p>
         <h1 className="mt-3 font-display text-4xl font-black uppercase tracking-tight text-slate-900">Plant Office</h1>
 
-        <div className="mt-10 grid grid-cols-2 gap-px border border-slate-200 bg-slate-200 lg:grid-cols-4" data-testid="admin-stats">
+        <div className="mt-10 grid grid-cols-2 gap-px border border-slate-200 bg-slate-200 lg:grid-cols-5" data-testid="admin-stats">
           {[
             { l: "Products", v: stats?.products },
-            { l: "Total Enquiries", v: stats?.enquiries },
+            { l: "Enquiries", v: stats?.enquiries },
             { l: "Pending Review", v: stats?.pending },
+            { l: "Orders", v: stats?.orders },
             { l: "Customers", v: stats?.customers },
           ].map((s) => (
             <div key={s.l} className="bg-white px-6 py-5">
@@ -94,8 +121,8 @@ export default function Admin() {
           ))}
         </div>
 
-        <div className="mt-10 flex gap-2" data-testid="admin-tabs">
-          {["enquiries", "products"].map((t) => (
+        <div className="mt-10 flex flex-wrap gap-2" data-testid="admin-tabs">
+          {["enquiries", "orders", "products"].map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -121,6 +148,7 @@ export default function Admin() {
                     <th className="px-5 py-3.5">Product</th>
                     <th className="px-5 py-3.5">Category</th>
                     <th className="px-5 py-3.5">Grade</th>
+                    <th className="px-5 py-3.5">Variants</th>
                     <th className="px-5 py-3.5">Featured</th>
                     <th className="px-5 py-3.5 text-right">Actions</th>
                   </tr>
@@ -131,6 +159,7 @@ export default function Admin() {
                       <td className="px-5 py-3 font-medium text-slate-900">{p.title}</td>
                       <td className="px-5 py-3 font-mono text-xs text-slate-600">{p.category}</td>
                       <td className="px-5 py-3 font-mono text-xs text-slate-600">{p.grade}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-slate-600">{p.variants?.length || 0}</td>
                       <td className="px-5 py-3 font-mono text-xs">{p.featured ? "Yes" : "—"}</td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
@@ -196,6 +225,56 @@ export default function Admin() {
             ))}
           </div>
         )}
+
+        {tab === "orders" && (
+          <div className="mt-6 space-y-4" data-testid="admin-orders-panel">
+            {orders.length === 0 && (
+              <div className="border border-slate-200 bg-white p-12 text-center font-mono text-xs uppercase tracking-[0.2em] text-slate-500" data-testid="admin-no-orders">
+                No orders yet
+              </div>
+            )}
+            {orders.map((ord) => (
+              <div key={ord.order_id} className="border border-slate-200 bg-white p-6" data-testid={`admin-order-${ord.ref}`}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <span className="font-mono text-sm font-bold tracking-[0.12em] text-slate-900">{ord.ref}</span>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {ord.customer_name} · <span className="font-mono text-xs">{ord.customer_email}</span>
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">
+                      {new Date(ord.created_at).toLocaleString("en-IN")} · {ord.address?.city}, {ord.address?.state} — {ord.address?.pincode}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <StatusBadge status={ord.status} />
+                    <select
+                      value={ord.status}
+                      onChange={(e) => setOrderStatus(ord.order_id, e.target.value)}
+                      className="h-9 border border-slate-300 bg-white px-2 font-mono text-[11px] uppercase tracking-wide outline-none focus:border-amber-600"
+                      data-testid={`admin-order-status-${ord.ref}`}
+                    >
+                      {ORDER_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4">
+                  {ord.items?.map((item) => (
+                    <li key={item.variant_id} className="flex flex-wrap justify-between gap-2 text-sm text-slate-700">
+                      <span>{item.title} — {item.size}</span>
+                      <span className="font-mono text-xs text-slate-500">× {item.qty} @ {inr(item.price)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">{ord.payment_method}{ord.note ? ` · ${ord.note}` : ""}</span>
+                  <span className="font-display text-lg font-extrabold text-amber-700" data-testid={`admin-order-total-${ord.ref}`}>{inr(ord.total_amount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -216,6 +295,7 @@ export default function Admin() {
             <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Image URL" className={inputCls} data-testid="product-form-image" />
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-description" />
             <textarea value={form.specs} onChange={(e) => setForm({ ...form, specs: e.target.value })} placeholder="Specs — one per line" rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-specs" />
+            <textarea value={form.variants} onChange={(e) => setForm({ ...form, variants: e.target.value })} placeholder={'Variants — one per line: size, price, stock\ne.g. 1/2", 65, 500'} rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-variants" />
             <label className="flex items-center gap-2 font-mono text-xs text-slate-700">
               <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} data-testid="product-form-featured" />
               Featured on homepage

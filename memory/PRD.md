@@ -32,6 +32,16 @@ Build a complete, modern, animated, responsive business website and ecommerce pl
 ## Credentials
 - Admin: admin@parishramengineering.com / Parishram@123 (see /app/memory/test_credentials.md)
 
+## Implemented (July 2026) — Phase 2: Plan alignment (MongoDB, no Postgres)
+User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-INVENTORY docs; schema inventory mapped to MongoDB collections:
+- categories collection (seeded: fittings + auto parts) with slugs
+- products extended: variants[] (size, price, stock_quantity, min_order_quantity, availability), sku, slug, is_active, images[]; startup migration backfills existing docs
+- carts collection (server mirror via POST /api/cart/sync on login)
+- addresses collection (CRUD, per user)
+- orders collection: checkout flow with server-side price resolution from variants, ref PO-YY-XXXXXX, payment "Bank Transfer / UPI on Invoice", statuses Pending/Confirmed/Dispatched/Delivered/Cancelled
+- Frontend: product detail variant selector with live price, Add to Cart + Add to Quote dual CTAs, /cart page with order summary + address checkout (login-gated), account tabs (Quotes / Orders / Addresses), admin Orders tab with status management, admin product form with variants editing, floating WhatsApp CTA (placeholder number), /calculator pipe spec tool (weight kg/m + burst/working PSI via Barlow) that sends specs into the quote form
+- Tested: full order chain via curl (sync cart → address → order ₹9,000 → admin status change → customer sees Confirmed), UI flows screenshotted (detail variants, cart, calculator)
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.

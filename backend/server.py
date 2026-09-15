@@ -110,6 +110,13 @@ class LoginIn(BaseModel):
     email: EmailStr
     password: str
 
+class VariantIn(BaseModel):
+    size: str
+    price: float = 0
+    stock_quantity: int = 0
+    min_order_quantity: int = 1
+    availability: str = "In Stock"
+
 class ProductIn(BaseModel):
     title: str
     category: str
@@ -120,6 +127,42 @@ class ProductIn(BaseModel):
     moq: str = ""
     unit: str = "Piece"
     featured: bool = False
+    is_active: bool = True
+    sku: str = ""
+    variants: List[VariantIn] = []
+
+class CartItemIn(BaseModel):
+    variant_id: str
+    product_id: str
+    title: str
+    image: str = ""
+    size: str = ""
+    price: float = 0
+    qty: int = 1
+
+class CartSyncIn(BaseModel):
+    items: List[CartItemIn]
+
+class AddressIn(BaseModel):
+    label: str = "Works"
+    name: str
+    phone: str = ""
+    line1: str
+    city: str
+    state: str
+    pincode: str
+
+class OrderItemIn(BaseModel):
+    variant_id: str
+    product_id: str
+    title: str
+    size: str = ""
+    qty: int = 1
+
+class OrderIn(BaseModel):
+    items: List[OrderItemIn]
+    address: AddressIn
+    note: str = ""
 
 class EnquiryItem(BaseModel):
     product_id: str
@@ -288,6 +331,10 @@ async def get_product(product_id: str):
 async def create_product(data: ProductIn, admin=Depends(require_admin)):
     product = data.model_dump()
     product["product_id"] = f"pe-{uuid.uuid4().hex[:8]}"
+    product["slug"] = product["product_id"]
+    product["images"] = [product["image"]] if product.get("image") else []
+    for v in product["variants"]:
+        v["variant_id"] = f"var_{uuid.uuid4().hex[:8]}"
     product["created_at"] = datetime.now(timezone.utc)
     await db.products.insert_one(dict(product))
     product.pop("created_at", None)
@@ -344,7 +391,108 @@ async def admin_stats(admin=Depends(require_admin)):
         "enquiries": await db.enquiries.count_documents({}),
         "pending": await db.enquiries.count_documents({"status": "Under Review"}),
         "customers": await db.users.count_documents({"role": "customer"}),
+        "orders": await db.orders.count_documents({}),
     }
+
+
+# ---------------- Categories ----------------
+
+@api_router.get("/categories")
+async def list_categories():
+    return await db.categories.find({}, {"_id": 0}).to_list(50)
+
+
+# ---------------- Cart (server mirror of shop cart) ----------------
+
+@api_router.get("/cart")
+async def get_cart(user=Depends(get_current_user)):
+    cart = await db.carts.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return cart or {"user_id": user["user_id"], "items": []}
+
+@api_router.post("/cart/sync")
+async def sync_cart(data: CartSyncIn, user=Depends(get_current_user)):
+    doc = {"user_id": user["user_id"], "items": [i.model_dump() for i in data.items], "updated_at": datetime.now(timezone.utc)}
+    await db.carts.update_one({"user_id": user["user_id"]}, {"$set": doc}, upsert=True)
+    return {"ok": True, "count": len(data.items)}
+
+
+# ---------------- Addresses ----------------
+
+@api_router.get("/addresses")
+async def list_addresses(user=Depends(get_current_user)):
+    return await db.addresses.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(50)
+
+@api_router.post("/addresses")
+async def create_address(data: AddressIn, user=Depends(get_current_user)):
+    doc = data.model_dump()
+    doc["address_id"] = f"addr_{uuid.uuid4().hex[:10]}"
+    doc["user_id"] = user["user_id"]
+    doc["created_at"] = datetime.now(timezone.utc)
+    await db.addresses.insert_one(dict(doc))
+    doc.pop("created_at", None)
+    return doc
+
+@api_router.delete("/addresses/{address_id}")
+async def delete_address(address_id: str, user=Depends(get_current_user)):
+    await db.addresses.delete_one({"address_id": address_id, "user_id": user["user_id"]})
+    return {"ok": True}
+
+
+# ---------------- Orders ----------------
+
+ORDER_STATUSES = ["Pending", "Confirmed", "Dispatched", "Delivered", "Cancelled"]
+
+@api_router.post("/orders")
+async def create_order(data: OrderIn, user=Depends(get_current_user)):
+    if not data.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+    items = []
+    total = 0.0
+    for item in data.items:
+        product = await db.products.find_one({"variants.variant_id": item.variant_id}, {"_id": 0})
+        variant = None
+        if product:
+            variant = next((v for v in product.get("variants", []) if v.get("variant_id") == item.variant_id), None)
+        price = variant["price"] if variant else 0
+        line = item.model_dump()
+        line["price"] = price
+        line["image"] = product.get("image", "") if product else ""
+        items.append(line)
+        total += price * item.qty
+    doc = {
+        "order_id": f"ord_{uuid.uuid4().hex[:10]}",
+        "ref": f"PO-{datetime.now(timezone.utc).strftime('%y')}-{uuid.uuid4().hex[:6].upper()}",
+        "user_id": user["user_id"],
+        "customer_name": user.get("name", ""),
+        "customer_email": user.get("email", ""),
+        "items": items,
+        "total_amount": round(total, 2),
+        "address": data.address.model_dump(),
+        "note": data.note,
+        "status": "Pending",
+        "payment_method": "Bank Transfer / UPI on Invoice",
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.orders.insert_one(dict(doc))
+    await db.carts.update_one({"user_id": user["user_id"]}, {"$set": {"items": [], "updated_at": datetime.now(timezone.utc)}})
+    return {"ok": True, "ref": doc["ref"], "order_id": doc["order_id"], "total_amount": doc["total_amount"]}
+
+@api_router.get("/orders/mine")
+async def my_orders(user=Depends(get_current_user)):
+    return await db.orders.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+
+@api_router.get("/admin/orders")
+async def all_orders(admin=Depends(require_admin)):
+    return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+@api_router.patch("/admin/orders/{order_id}")
+async def update_order_status(order_id: str, data: StatusIn, admin=Depends(require_admin)):
+    if data.status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    result = await db.orders.update_one({"order_id": order_id}, {"$set": {"status": data.status}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"ok": True}
 
 
 # ---------------- Contact ----------------
@@ -426,6 +574,33 @@ async def seed_admin():
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated")
 
+FIT_SIZES = [('1/4"', 45), ('1/2"', 65), ('3/4"', 85), ('1"', 120), ('2"', 260)]
+AUTO_SIZES = [("Standard", 180), ("Heavy-Duty", 260)]
+
+def default_variants(product):
+    base = FIT_SIZES if product.get("category") == FIT else AUTO_SIZES
+    mult = 1.6 if "316" in product.get("grade", "") else 1.0
+    try:
+        moq = int(str(product.get("moq", "1")).split()[0])
+    except (ValueError, IndexError):
+        moq = 1
+    return [
+        {
+            "variant_id": f"var_{uuid.uuid4().hex[:8]}",
+            "size": size,
+            "price": round(price * mult, 2),
+            "stock_quantity": 500,
+            "min_order_quantity": moq,
+            "availability": "In Stock",
+        }
+        for size, price in base
+    ]
+
+CATEGORIES_SEED = [
+    {"category_id": "cat-fittings", "name": FIT, "slug": "ss-nipple-pipe-fittings", "description": "Hex, barrel, reducing, close, welding and hose nipples in SS 304 / 316 / 316L.", "image": IMG["fittings"]},
+    {"category_id": "cat-auto", "name": AUTO, "slug": "auto-parts", "description": "CNC-turned bushings, shafts, flanges, pins and hydraulic adapters to OEM drawings.", "image": IMG["auto"]},
+]
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
@@ -433,12 +608,35 @@ async def startup():
     await db.user_sessions.create_index("session_token")
     await db.login_attempts.create_index("identifier")
     await db.products.create_index("product_id", unique=True)
+    await db.carts.create_index("user_id", unique=True)
+    await db.orders.create_index("user_id")
+    await db.addresses.create_index("user_id")
+    await db.categories.create_index("slug", unique=True)
     await seed_admin()
+    if await db.categories.count_documents({}) == 0:
+        await db.categories.insert_many(CATEGORIES_SEED)
+        logger.info("Seeded categories")
     if await db.products.count_documents({}) == 0:
         for p in SEED_PRODUCTS:
             p["created_at"] = datetime.now(timezone.utc)
+            p["variants"] = default_variants(p)
+            p["images"] = [p["image"]]
+            p["slug"] = p["product_id"]
+            p["sku"] = f"PE-{p['product_id'][:8].upper()}"
+            p["is_active"] = True
         await db.products.insert_many(SEED_PRODUCTS)
         logger.info(f"Seeded {len(SEED_PRODUCTS)} products")
+    else:
+        # Migration: backfill variants / sku / slug / images on products created before the schema expansion
+        async for p in db.products.find({"variants": {"$exists": False}}):
+            await db.products.update_one({"_id": p["_id"]}, {"$set": {
+                "variants": default_variants(p),
+                "images": [p.get("image", "")],
+                "slug": p.get("product_id"),
+                "sku": f"PE-{p.get('product_id', '')[:8].upper()}",
+                "is_active": True,
+            }})
+        logger.info("Product schema migration checked")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

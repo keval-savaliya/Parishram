@@ -13,12 +13,13 @@ const inputCls =
 export default function QuoteCart() {
   const { items, updateQty, updateNote, remove, clear } = useCart();
   const { user } = useAuth();
-  const [form, setForm] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: "",
-    company: "",
-    message: "",
+  const [form, setForm] = useState(() => {
+    let calcNote = "";
+    try {
+      calcNote = sessionStorage.getItem("pe_calc_note") || "";
+      if (calcNote) sessionStorage.removeItem("pe_calc_note");
+    } catch {}
+    return { name: user?.name || "", email: user?.email || "", phone: "", company: "", message: calcNote };
   });
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(null);

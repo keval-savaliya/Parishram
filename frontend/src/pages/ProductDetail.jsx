@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Minus, Plus, ClipboardList } from "lucide-react";
+import { ArrowLeft, Check, Minus, Plus, ClipboardList, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "../lib/api";
 import { useCart } from "../context/CartContext";
+import { useShopCart } from "../context/ShopCartContext";
 import { ProductCard } from "../components/ProductCard";
 import { Reveal } from "../components/Reveal";
 
@@ -11,8 +13,10 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [qty, setQty] = useState(100);
+  const [variantIdx, setVariantIdx] = useState(0);
   const [notFound, setNotFound] = useState(false);
   const { add, setDrawerOpen } = useCart();
+  const { add: addToCart } = useShopCart();
 
   useEffect(() => {
     setProduct(null);
@@ -85,6 +89,33 @@ export default function ProductDetail() {
             </Reveal>
 
             <Reveal delay={0.15}>
+              {product.variants?.length > 0 && (
+                <div className="mt-8">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-500">Select Size / Variant</p>
+                  <div className="mt-3 flex flex-wrap gap-2" data-testid="variant-selector">
+                    {product.variants.map((v, i) => (
+                      <button
+                        key={v.variant_id || i}
+                        onClick={() => setVariantIdx(i)}
+                        className={`h-11 border px-4 font-mono text-xs tracking-wide transition-all ${
+                          variantIdx === i ? "border-slate-950 bg-slate-950 text-white" : "border-slate-300 bg-white text-slate-600 hover:border-slate-950"
+                        }`}
+                        data-testid={`variant-${i}`}
+                      >
+                        {v.size} · ₹{v.price}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-5 flex flex-wrap items-baseline gap-3" data-testid="detail-price">
+                    <span className="font-display text-3xl font-extrabold text-slate-900">
+                      ₹{product.variants[variantIdx].price.toLocaleString("en-IN")}
+                    </span>
+                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">
+                      /{(product.unit || "Piece").toLowerCase()} · {product.variants[variantIdx].availability} · MOQ {product.variants[variantIdx].min_order_quantity}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <div className="flex items-center border border-slate-300 bg-white">
                   <button className="grid h-12 w-11 place-items-center text-slate-500 hover:text-amber-700" onClick={() => setQty(Math.max(1, qty - 50))} data-testid="detail-qty-minus">
@@ -102,17 +133,31 @@ export default function ProductDetail() {
                 </div>
                 <button
                   onClick={() => {
+                    const v = product.variants?.[variantIdx];
+                    if (!v) {
+                      toast.error("No purchasable variant on this product — use Add to Quote");
+                      return;
+                    }
+                    addToCart(product, v, qty);
+                  }}
+                  className="flex h-12 flex-1 items-center justify-center gap-2 bg-amber-600 px-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-white transition-all hover:bg-amber-500 active:scale-95 sm:flex-none sm:px-8"
+                  data-testid="detail-add-to-cart"
+                >
+                  <ShoppingCart className="h-4 w-4" /> Add to Cart
+                </button>
+                <button
+                  onClick={() => {
                     add(product, qty);
                     setDrawerOpen(true);
                   }}
-                  className="flex h-12 flex-1 items-center justify-center gap-2 bg-slate-950 px-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-white transition-all hover:bg-amber-600 active:scale-95 sm:flex-none sm:px-10"
+                  className="flex h-12 flex-1 items-center justify-center gap-2 bg-slate-950 px-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-white transition-all hover:bg-slate-800 active:scale-95 sm:flex-none sm:px-8"
                   data-testid="detail-add-to-quote"
                 >
-                  <ClipboardList className="h-4 w-4" /> Add to Quote Cart
+                  <ClipboardList className="h-4 w-4" /> Add to Quote
                 </button>
               </div>
               <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                Bulk pricing · MTC available · Pan-India dispatch
+                Prices indicative, ex-works Rajkot · GST extra · MTC available · Pan-India dispatch
               </p>
             </Reveal>
           </div>

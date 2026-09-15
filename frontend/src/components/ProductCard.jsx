@@ -33,6 +33,12 @@ export const ProductCard = ({ product, index = 0 }) => {
           <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-slate-500">
             {product.grade} · MOQ {product.moq}
           </p>
+          {product.variants?.length > 0 && (
+            <p className="mt-1.5 font-mono text-xs font-semibold text-slate-900" data-testid={`product-price-${product.product_id}`}>
+              From ₹{Math.min(...product.variants.map((v) => v.price)).toLocaleString("en-IN")}
+              <span className="font-normal text-slate-500"> /{(product.unit || "Piece").toLowerCase()}</span>
+            </p>
+          )}
           <div className="mt-auto flex gap-2 pt-5">
             <Link
               to={`/products/${product.product_id}`}

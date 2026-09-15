@@ -26,6 +26,7 @@ export const Footer = () => (
             <li><Link to="/products" className="transition-colors hover:text-white" data-testid="footer-products-link">Products</Link></li>
             <li><Link to="/industries" className="transition-colors hover:text-white" data-testid="footer-industries-link">Industries</Link></li>
             <li><Link to="/quote" className="transition-colors hover:text-white" data-testid="footer-quote-link">Get a Quote</Link></li>
+            <li><Link to="/calculator" className="transition-colors hover:text-white" data-testid="footer-calculator-link">Pipe Spec Calculator</Link></li>
           </ul>
         </div>
         <div>
