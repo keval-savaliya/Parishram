@@ -448,17 +448,30 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Cart is empty")
     items = []
     total = 0.0
+    touched = []
     for item in data.items:
         product = await db.products.find_one({"variants.variant_id": item.variant_id}, {"_id": 0})
         variant = None
         if product:
             variant = next((v for v in product.get("variants", []) if v.get("variant_id") == item.variant_id), None)
-        price = variant["price"] if variant else 0
+        if not product or not variant:
+            raise HTTPException(status_code=400, detail=f"Variant unavailable for {item.title}")
+        if variant.get("stock_quantity", 0) < item.qty:
+            raise HTTPException(status_code=400, detail=f"Insufficient stock for {product['title']} ({variant['size']}) — {variant.get('stock_quantity', 0)} pcs available")
         line = item.model_dump()
-        line["price"] = price
-        line["image"] = product.get("image", "") if product else ""
+        line["price"] = variant["price"]
+        line["image"] = product.get("image", "")
         items.append(line)
-        total += price * item.qty
+        total += variant["price"] * item.qty
+        touched.append((product["product_id"], variant["variant_id"], item.qty))
+    for product_id, variant_id, qty in touched:
+        product = await db.products.find_one({"product_id": product_id}, {"_id": 0})
+        variants = [
+            {**v, "stock_quantity": v["stock_quantity"] - qty, "availability": "Out of Stock" if v["stock_quantity"] - qty <= 0 else "In Stock"}
+            if v.get("variant_id") == variant_id else v
+            for v in product["variants"]
+        ]
+        await db.products.update_one({"product_id": product_id}, {"$set": {"variants": variants}})
     doc = {
         "order_id": f"ord_{uuid.uuid4().hex[:10]}",
         "ref": f"PO-{datetime.now(timezone.utc).strftime('%y')}-{uuid.uuid4().hex[:6].upper()}",
@@ -489,9 +502,16 @@ async def all_orders(admin=Depends(require_admin)):
 async def update_order_status(order_id: str, data: StatusIn, admin=Depends(require_admin)):
     if data.status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
-    result = await db.orders.update_one({"order_id": order_id}, {"$set": {"status": data.status}})
-    if result.matched_count == 0:
+    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if data.status == "Cancelled" and order.get("status") != "Cancelled":
+        for item in order.get("items", []):
+            await db.products.update_one(
+                {"variants.variant_id": item["variant_id"]},
+                {"$inc": {"variants.$.stock_quantity": item["qty"]}, "$set": {"variants.$.availability": "In Stock"}},
+            )
+    await db.orders.update_one({"order_id": order_id}, {"$set": {"status": data.status}})
     return {"ok": True}
 
 

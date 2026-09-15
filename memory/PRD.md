@@ -42,6 +42,13 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - Frontend: product detail variant selector with live price, Add to Cart + Add to Quote dual CTAs, /cart page with order summary + address checkout (login-gated), account tabs (Quotes / Orders / Addresses), admin Orders tab with status management, admin product form with variants editing, floating WhatsApp CTA (placeholder number), /calculator pipe spec tool (weight kg/m + burst/working PSI via Barlow) that sends specs into the quote form
 - Tested: full order chain via curl (sync cart → address → order ₹9,000 → admin status change → customer sees Confirmed), UI flows screenshotted (detail variants, cart, calculator)
 
+## Implemented (July 2026) — Stock management
+- Orders decrement variant stock server-side with validation; overselling blocked with clear 400 message
+- Availability auto-flips to "Out of Stock" at zero; variant chips disabled/struck-through in UI, live stock counts shown; Add to Cart guarded
+- Admin cancelling an order restores stock automatically
+- Demo: ss-hex-nipple-316 2" variant set to 0 stock to show the OOS state
+- WhatsApp button + phone placeholders now use the real business number +91 90235 36905
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.

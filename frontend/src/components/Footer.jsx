@@ -45,7 +45,7 @@ export const Footer = () => (
               <span>Plot 24, GIDC Industrial Estate,<br />Rajkot — 360002, Gujarat, India</span>
             </li>
             <li className="flex items-center gap-2.5">
-              <Phone className="h-4 w-4 shrink-0 text-amber-600" /> +91 98765 43210
+              <Phone className="h-4 w-4 shrink-0 text-amber-600" /> +91 90235 36905
             </li>
             <li className="flex items-center gap-2.5">
               <Mail className="h-4 w-4 shrink-0 text-amber-600" /> sales@parishramengineering.in

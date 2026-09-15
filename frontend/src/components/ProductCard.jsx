@@ -34,10 +34,16 @@ export const ProductCard = ({ product, index = 0 }) => {
             {product.grade} · MOQ {product.moq}
           </p>
           {product.variants?.length > 0 && (
-            <p className="mt-1.5 font-mono text-xs font-semibold text-slate-900" data-testid={`product-price-${product.product_id}`}>
-              From ₹{Math.min(...product.variants.map((v) => v.price)).toLocaleString("en-IN")}
-              <span className="font-normal text-slate-500"> /{(product.unit || "Piece").toLowerCase()}</span>
-            </p>
+            product.variants.every((v) => (v.stock_quantity ?? 0) <= 0) ? (
+              <p className="mt-1.5 font-mono text-xs font-semibold text-red-600" data-testid={`product-oos-${product.product_id}`}>
+                Out of Stock — enquiry open
+              </p>
+            ) : (
+              <p className="mt-1.5 font-mono text-xs font-semibold text-slate-900" data-testid={`product-price-${product.product_id}`}>
+                From ₹{Math.min(...product.variants.map((v) => v.price)).toLocaleString("en-IN")}
+                <span className="font-normal text-slate-500"> /{(product.unit || "Piece").toLowerCase()}</span>
+              </p>
+            )
           )}
           <div className="mt-auto flex gap-2 pt-5">
             <Link

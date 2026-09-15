@@ -53,7 +53,7 @@ export default function Contact() {
             <div className="space-y-px border border-slate-200 bg-slate-200">
               {[
                 { icon: MapPin, label: "Works & Office", value: "Plot 24, GIDC Industrial Estate, Rajkot — 360002, Gujarat, India" },
-                { icon: Phone, label: "Phone / WhatsApp", value: "+91 98765 43210" },
+                { icon: Phone, label: "Phone / WhatsApp", value: "+91 90235 36905" },
                 { icon: Mail, label: "Email", value: "sales@parishramengineering.in" },
                 { icon: Clock, label: "Working Hours", value: "Mon–Sat, 9:00 – 19:00 IST" },
               ].map((c) => (

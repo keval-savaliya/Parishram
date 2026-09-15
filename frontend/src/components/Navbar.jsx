@@ -42,7 +42,7 @@ export const Navbar = () => {
           </p>
           <div className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">
             <span className="flex items-center gap-1.5">
-              <Phone className="h-3 w-3 text-amber-500" /> +91 98765 43210
+              <Phone className="h-3 w-3 text-amber-500" /> +91 90235 36905
             </span>
             <span>sales@parishramengineering.in</span>
           </div>
@@ -175,7 +175,7 @@ export const MobileCTA = () => {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-[#0B0F19]/95 backdrop-blur-xl md:hidden" data-testid="mobile-sticky-cta">
       <a
-        href="tel:+919876543210"
+        href="tel:+919023536905"
         className="flex h-12 flex-1 items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-slate-300"
         data-testid="mobile-call-button"
       >

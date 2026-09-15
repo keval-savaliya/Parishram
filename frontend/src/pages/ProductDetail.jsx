@@ -25,6 +25,8 @@ export default function ProductDetail() {
       .get(`/products/${id}`)
       .then(({ data }) => {
         setProduct(data);
+        const firstInStock = (data.variants || []).findIndex((v) => (v.stock_quantity ?? 0) > 0);
+        if (firstInStock > 0) setVariantIdx(firstInStock);
         api.get("/products", { params: { category: data.category } }).then(({ data: rel }) =>
           setRelated(rel.filter((r) => r.product_id !== data.product_id).slice(0, 4))
         );
@@ -93,25 +95,38 @@ export default function ProductDetail() {
                 <div className="mt-8">
                   <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-500">Select Size / Variant</p>
                   <div className="mt-3 flex flex-wrap gap-2" data-testid="variant-selector">
-                    {product.variants.map((v, i) => (
-                      <button
-                        key={v.variant_id || i}
-                        onClick={() => setVariantIdx(i)}
-                        className={`h-11 border px-4 font-mono text-xs tracking-wide transition-all ${
-                          variantIdx === i ? "border-slate-950 bg-slate-950 text-white" : "border-slate-300 bg-white text-slate-600 hover:border-slate-950"
-                        }`}
-                        data-testid={`variant-${i}`}
-                      >
-                        {v.size} · ₹{v.price}
-                      </button>
-                    ))}
+                    {product.variants.map((v, i) => {
+                      const out = (v.stock_quantity ?? 0) <= 0;
+                      return (
+                        <button
+                          key={v.variant_id || i}
+                          onClick={() => !out && setVariantIdx(i)}
+                          disabled={out}
+                          className={`h-11 border px-4 font-mono text-xs tracking-wide transition-all ${
+                            out
+                              ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 line-through"
+                              : variantIdx === i
+                                ? "border-slate-950 bg-slate-950 text-white"
+                                : "border-slate-300 bg-white text-slate-600 hover:border-slate-950"
+                          }`}
+                          data-testid={`variant-${i}`}
+                          title={out ? "Out of stock" : `${v.stock_quantity} in stock`}
+                        >
+                          {v.size} · ₹{v.price}{out ? " · Out of Stock" : ""}
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="mt-5 flex flex-wrap items-baseline gap-3" data-testid="detail-price">
                     <span className="font-display text-3xl font-extrabold text-slate-900">
                       ₹{product.variants[variantIdx].price.toLocaleString("en-IN")}
                     </span>
-                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-slate-500">
-                      /{(product.unit || "Piece").toLowerCase()} · {product.variants[variantIdx].availability} · MOQ {product.variants[variantIdx].min_order_quantity}
+                    <span className={`font-mono text-xs uppercase tracking-[0.15em] ${(product.variants[variantIdx].stock_quantity ?? 0) <= 0 ? "font-semibold text-red-600" : "text-slate-500"}`}>
+                      /{(product.unit || "Piece").toLowerCase()} ·{" "}
+                      {(product.variants[variantIdx].stock_quantity ?? 0) <= 0
+                        ? "Out of Stock"
+                        : `${product.variants[variantIdx].stock_quantity} in stock`}{" "}
+                      · MOQ {product.variants[variantIdx].min_order_quantity}
                     </span>
                   </div>
                 </div>
@@ -136,6 +151,14 @@ export default function ProductDetail() {
                     const v = product.variants?.[variantIdx];
                     if (!v) {
                       toast.error("No purchasable variant on this product — use Add to Quote");
+                      return;
+                    }
+                    if ((v.stock_quantity ?? 0) <= 0) {
+                      toast.error("Out of stock — use Add to Quote and we will schedule production");
+                      return;
+                    }
+                    if (qty > v.stock_quantity) {
+                      toast.error(`Only ${v.stock_quantity} pcs in stock for this size`);
                       return;
                     }
                     addToCart(product, v, qty);
