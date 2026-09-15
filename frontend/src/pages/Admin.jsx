@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatApiError } from "../lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -21,6 +21,7 @@ export default function Admin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [uploading, setUploading] = useState(false);
 
   const load = () => {
     api.get("/admin/stats").then(({ data }) => setStats(data)).catch(() => {});
@@ -77,6 +78,24 @@ export default function Admin() {
       load();
     } catch (err) {
       toast.error(formatApiError(err));
+    }
+  };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/admin/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setForm((f) => ({ ...f, image: `${process.env.REACT_APP_BACKEND_URL}${data.url}` }));
+      toast.success("Photo uploaded");
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -292,7 +311,18 @@ export default function Admin() {
               <input value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} placeholder="Grade (e.g. SS 304)" className={inputCls} data-testid="product-form-grade" />
               <input value={form.moq} onChange={(e) => setForm({ ...form, moq: e.target.value })} placeholder="MOQ (e.g. 100 pcs)" className={inputCls} data-testid="product-form-moq" />
             </div>
-            <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Image URL" className={inputCls} data-testid="product-form-image" />
+            <div>
+              <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="Image URL (or upload below)" className={inputCls} data-testid="product-form-image" />
+              <div className="mt-2 flex items-center gap-3">
+                <label className={`flex h-10 items-center gap-2 border border-slate-300 px-4 font-mono text-[11px] uppercase tracking-[0.15em] text-slate-700 transition-colors ${uploading ? "cursor-wait opacity-60" : "cursor-pointer hover:border-slate-950"}`} data-testid="product-form-upload-label">
+                  <Upload className="h-3.5 w-3.5" /> {uploading ? "Uploading…" : "Upload Photo"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFile} disabled={uploading} data-testid="product-form-upload" />
+                </label>
+                {form.image && (
+                  <img src={form.image} alt="Product preview" className="h-10 w-10 border border-slate-200 object-cover" data-testid="product-form-preview" />
+                )}
+              </div>
+            </div>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-description" />
             <textarea value={form.specs} onChange={(e) => setForm({ ...form, specs: e.target.value })} placeholder="Specs — one per line" rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-specs" />
             <textarea value={form.variants} onChange={(e) => setForm({ ...form, variants: e.target.value })} placeholder={'Variants — one per line: size, price, stock\ne.g. 1/2", 65, 500'} rows={3} className="w-full border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:border-amber-600" data-testid="product-form-variants" />

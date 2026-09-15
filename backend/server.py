@@ -10,7 +10,7 @@ from typing import Optional, List
 
 import bcrypt
 import jwt
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr, Field
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
@@ -25,6 +25,36 @@ api_router = APIRouter(prefix="/api")
 JWT_ALGORITHM = "HS256"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+# ---------------- Object storage ----------------
+
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "parishram-engineering"
+storage_key = None
+
+def init_storage(force: bool = False):
+    global storage_key
+    if storage_key and not force:
+        return storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    storage_key = resp.json()["storage_key"]
+    return storage_key
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key, "Content-Type": content_type}, data=data, timeout=120)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str):
+    key = init_storage()
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
 # ---------------- Auth helpers ----------------
@@ -515,6 +545,46 @@ async def update_order_status(order_id: str, data: StatusIn, admin=Depends(requi
     return {"ok": True}
 
 
+# ---------------- File uploads (object storage) ----------------
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+@api_router.post("/admin/upload")
+async def admin_upload(file: UploadFile = File(...), admin=Depends(require_admin)):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP or GIF images are allowed")
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
+    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "jpg"
+    path = f"{APP_NAME}/uploads/products/{uuid.uuid4()}.{ext}"
+    result = put_object(path, data, file.content_type)
+    await db.files.insert_one({
+        "file_id": f"file_{uuid.uuid4().hex[:10]}",
+        "storage_path": result["path"],
+        "original_filename": file.filename,
+        "content_type": file.content_type,
+        "size": result["size"],
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc),
+    })
+    return {"path": result["path"], "url": f"/api/files/{result['path']}"}
+
+@api_router.get("/files/{path:path}")
+async def serve_file(path: str):
+    if not path.startswith(f"{APP_NAME}/"):
+        raise HTTPException(status_code=404, detail="File not found")
+    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        data, content_type = get_object(path)
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found in storage")
+    return Response(content=data, media_type=record.get("content_type") or content_type)
+
+
 # ---------------- Contact ----------------
 
 @api_router.post("/contact")
@@ -633,6 +703,11 @@ async def startup():
     await db.addresses.create_index("user_id")
     await db.categories.create_index("slug", unique=True)
     await seed_admin()
+    try:
+        init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     if await db.categories.count_documents({}) == 0:
         await db.categories.insert_many(CATEGORIES_SEED)
         logger.info("Seeded categories")

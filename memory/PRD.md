@@ -49,6 +49,12 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - Demo: ss-hex-nipple-316 2" variant set to 0 stock to show the OOS state
 - WhatsApp button + phone placeholders now use the real business number +91 90235 36905
 
+## Implemented (July 2026) — Product photo uploads
+- Admin product form has an "Upload Photo" button: JPG/PNG/WEBP/GIF up to 5 MB, stored in Emergent object storage (path prefix parishram-engineering/), referenced in db.files with soft-delete flag
+- Backend: POST /api/admin/upload (admin-only), GET /api/files/{path} serves images publicly for <img> tags; storage key initialized at startup
+- URL text field still available alongside upload; uploaded photo shows a preview thumbnail in the form
+- Tested: upload → serve round-trip byte-identical, guests 401, non-image types 400
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.
