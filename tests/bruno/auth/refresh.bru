@@ -6,14 +6,23 @@ meta {
 
 post {
   url: {{baseUrl}}/api/auth/refresh
-  body: none
-  auth: bearer
+  body: json
+  auth: none
 }
 
-auth:bearer {
-  token: {{accessToken}}
+body:json {
+  {
+    "refresh_token": "{{refreshToken}}"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.access_token) {
+    bru.setEnvVar("accessToken", res.body.access_token);
+  }
 }
 
 docs {
-  Refresh normally uses the refresh_token cookie. Bearer here is the access token; use the web flow for cookie refresh.
+  Run when a request returns 401 "Token expired" — access tokens last 60 minutes.
+  Login/Register scripts capture refreshToken automatically; this mints a fresh accessToken.
 }

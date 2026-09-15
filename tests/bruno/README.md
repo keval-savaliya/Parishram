@@ -14,6 +14,7 @@ cart, addresses, quote enquiries, orders, admin (stats, upload), contact and fil
 ## Environment variables
 - `baseUrl` — set by environment.
 - `accessToken` — auto-filled by Login/Register response scripts; sent as Bearer on protected requests.
+- `refreshToken` — auto-filled by Login/Register. If you hit 401 "Token expired" (access tokens last 60 min), run **Auth → Refresh Token** to mint a fresh accessToken without logging in again.
 - `productId` — defaults to seeded `ss-hex-nipple-304`.
 - `variantId` — auto-filled from the **Get Product** response script; run it before Sync Cart / Create Order.
 - `enquiryId`, `orderId`, `addressId`, `filePath` — copy from create/list responses when needed.

@@ -64,11 +64,25 @@ const FullPageLoader = () => (
   </div>
 );
 
+const AccessDenied = () => (
+  <div className="grid min-h-screen place-items-center bg-[#F8FAFC] px-4 pt-24" data-testid="access-denied">
+    <div className="max-w-md border border-slate-200 bg-white p-10 text-center">
+      <p className="font-display text-2xl font-black uppercase tracking-tight text-slate-900">Access Restricted</p>
+      <p className="mt-3 text-sm text-slate-600">
+        This area is limited to Parishram Engineering admins. Your account does not have admin rights.
+      </p>
+      <a href="/" className="mt-6 inline-flex h-11 items-center bg-slate-950 px-6 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="access-denied-home">
+        Back to Home
+      </a>
+    </div>
+  </div>
+);
+
 const Protected = ({ children, admin = false }) => {
   const { user } = useAuth();
   if (user === null) return <FullPageLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (admin && user.role !== "admin") return <Navigate to="/account" replace />;
+  if (admin && user.role !== "admin") return <AccessDenied />;
   return children;
 };
 

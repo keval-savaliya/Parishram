@@ -76,11 +76,12 @@ def create_refresh_token(user_id: str) -> str:
     payload = {"sub": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"}
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-def set_auth_cookies(response: Response, user_id: str, email: str) -> str:
+def set_auth_cookies(response: Response, user_id: str, email: str):
     access = create_access_token(user_id, email)
+    refresh = create_refresh_token(user_id)
     response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    response.set_cookie("refresh_token", create_refresh_token(user_id), httponly=True, secure=True, samesite="none", max_age=604800, path="/")
-    return access
+    response.set_cookie("refresh_token", refresh, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+    return access, refresh
 
 async def find_user(user_id: str):
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
@@ -251,8 +252,8 @@ async def register(data: RegisterIn, response: Response):
     }
     await db.users.insert_one(dict(user))
     user.pop("password_hash")
-    token = set_auth_cookies(response, user["user_id"], email)
-    return {**user, "access_token": token}
+    access, refresh = set_auth_cookies(response, user["user_id"], email)
+    return {**user, "access_token": access, "refresh_token": refresh}
 
 @api_router.post("/auth/login")
 async def login(data: LoginIn, request: Request, response: Response):
@@ -276,8 +277,8 @@ async def login(data: LoginIn, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     await db.login_attempts.delete_one({"identifier": identifier})
     clean = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
-    token = set_auth_cookies(response, user["user_id"], email)
-    return {**clean, "access_token": token}
+    access, refresh = set_auth_cookies(response, user["user_id"], email)
+    return {**clean, "access_token": access, "refresh_token": refresh}
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
@@ -297,6 +298,12 @@ async def me(user=Depends(get_current_user)):
 async def refresh(request: Request, response: Response):
     token = request.cookies.get("refresh_token")
     if not token:
+        try:
+            body = await request.json()
+            token = body.get("refresh_token")
+        except Exception:
+            token = None
+    if not token:
         raise HTTPException(status_code=401, detail="No refresh token")
     try:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
@@ -307,8 +314,9 @@ async def refresh(request: Request, response: Response):
     user = await find_user(payload["sub"])
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    response.set_cookie("access_token", create_access_token(user["user_id"], user["email"]), httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    return {"ok": True}
+    access = create_access_token(user["user_id"], user["email"])
+    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    return {"ok": True, "access_token": access}
 
 @api_router.post("/auth/google/session")
 async def google_session(request: Request, response: Response):

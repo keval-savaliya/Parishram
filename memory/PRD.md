@@ -73,6 +73,11 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - All login-required endpoints verified header-only: admin stats/orders/products CRUD 200 with admin Bearer, 401 without token, 403 with customer token, customer endpoints 200 with customer Bearer
 - Bruno collection: every protected request uses auth:bearer {{accessToken}}, auto-captured by Login/Register response scripts
 
+## Implemented (July 2026) — Token refresh + frontend role guards
+- Login/Register also return refresh_token in body; POST /api/auth/refresh accepts refresh_token via JSON body (API clients) or cookie (web), returns fresh access_token
+- Bruno: Refresh Token request uses {{refreshToken}} and auto-saves the new accessToken — no more expired-token 401 dead ends
+- Frontend: /admin shows an "Access Restricted" screen for logged-in non-admins (instead of silent redirect); navbar shows an amber admin shield shortcut only for admin role; account page admin link already role-guarded
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.

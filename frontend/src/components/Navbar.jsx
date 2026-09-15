@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Menu, X, ClipboardList, User, Phone, ShoppingCart } from "lucide-react";
+import { Menu, X, ClipboardList, User, Phone, ShoppingCart, ShieldCheck } from "lucide-react";
 import { LogoMark, LogoType } from "./Logo";
 import { useCart } from "../context/CartContext";
 import { useShopCart } from "../context/ShopCartContext";
@@ -104,6 +104,17 @@ export const Navbar = () => {
                 </span>
               )}
             </button>
+            {user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="hidden h-10 w-10 place-items-center border border-amber-500/50 text-amber-500 transition-colors hover:bg-amber-600 hover:text-white sm:grid"
+                data-testid="admin-nav-button"
+                aria-label="Admin panel"
+                title="Admin panel"
+              >
+                <ShieldCheck className="h-[18px] w-[18px]" />
+              </Link>
+            )}
             <Link
               to={user ? "/account" : "/login"}
               className="hidden h-10 w-10 place-items-center border border-white/15 text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-500 sm:grid"
