@@ -55,6 +55,11 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - URL text field still available alongside upload; uploaded photo shows a preview thumbnail in the form
 - Tested: upload → serve round-trip byte-identical, guests 401, non-image types 400
 
+## Implemented (July 2026) — Database moved to MongoDB Atlas
+- MONGO_URL switched to user's Atlas cluster (cluster0.1bn8e1o.mongodb.net); local MongoDB no longer used
+- Fresh startup seeded admin, categories and 16 products on Atlas; all APIs verified against Atlas
+- NOTE: old local data (test enquiry/orders, buyer account, OOS demo variant) did not carry over — cluster starts clean
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.
