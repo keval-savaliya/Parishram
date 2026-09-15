@@ -5,6 +5,35 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Silent token refresh: on 401, refresh the access token once (single in-flight
+// refresh shared across concurrent requests), then retry the original request.
+const AUTH_CALLS = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/google"];
+let refreshPromise = null;
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const url = original?.url || "";
+    const isAuthCall = AUTH_CALLS.some((p) => url.includes(p));
+    if (error.response?.status === 401 && !original._retry && !isAuthCall) {
+      original._retry = true;
+      try {
+        if (!refreshPromise) {
+          refreshPromise = api.post("/auth/refresh").finally(() => {
+            refreshPromise = null;
+          });
+        }
+        await refreshPromise;
+        return api(original);
+      } catch {
+        // Refresh failed — session is over, let the 401 propagate.
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function formatApiError(err) {
   const detail = err?.response?.data?.detail;
   if (detail == null) return err?.message || "Something went wrong. Please try again.";

@@ -78,6 +78,10 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - Bruno: Refresh Token request uses {{refreshToken}} and auto-saves the new accessToken — no more expired-token 401 dead ends
 - Frontend: /admin shows an "Access Restricted" screen for logged-in non-admins (instead of silent redirect); navbar shows an amber admin shield shortcut only for admin role; account page admin link already role-guarded
 
+## Implemented (July 2026) — Silent token refresh (website)
+- Axios response interceptor in lib/api.js: any 401 triggers a single shared POST /auth/refresh (cookie-based), then retries the original request transparently; auth endpoints excluded, no retry loops
+- Verified with a crafted expired access token + valid refresh cookie: account page loaded the customer profile with no redirect to login
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.
