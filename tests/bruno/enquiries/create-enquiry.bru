@@ -7,7 +7,15 @@ meta {
 post {
   url: {{baseUrl}}/api/enquiries
   body: json
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Optional auth: with a Bearer token the enquiry links to the customer account; without it the enquiry is accepted as guest.
 }
 
 body:json {

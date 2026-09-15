@@ -67,6 +67,12 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - tests/bruno/: full Bruno collection (32 requests) covering every backend route — auth (register/login/me/refresh/logout/google), products CRUD + categories + meta, cart get/sync, addresses CRUD, enquiries create/mine/admin-list/admin-status, orders create/mine/admin-list/admin-status, admin stats + photo upload (multipart), contact, file serving
 - Environments: Production (preview URL) + Local (localhost:8001); response scripts auto-capture variantId/addressId/enquiryId/orderId/filePath; README with run order
 
+## Implemented (July 2026) — JWT Bearer authorization
+- Login/Register/Google-session responses now return the token in the body (access_token / session_token) alongside httpOnly cookies
+- get_current_user accepts Authorization: Bearer for both JWT access tokens and Google OAuth session tokens; cookies still work for the web app
+- All login-required endpoints verified header-only: admin stats/orders/products CRUD 200 with admin Bearer, 401 without token, 403 with customer token, customer endpoints 200 with customer Bearer
+- Bruno collection: every protected request uses auth:bearer {{accessToken}}, auto-captured by Login/Register response scripts
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.

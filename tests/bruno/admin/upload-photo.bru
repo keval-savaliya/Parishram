@@ -7,7 +7,11 @@ meta {
 post {
   url: {{baseUrl}}/api/admin/upload
   body: multipart-form
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 body:multipart-form {

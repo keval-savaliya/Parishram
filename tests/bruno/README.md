@@ -6,11 +6,14 @@ cart, addresses, quote enquiries, orders, admin (stats, upload), contact and fil
 ## Setup
 1. Open Bruno → Open Collection → select this folder (`tests/bruno`).
 2. Pick an environment: **Production** (preview URL) or **Local** (localhost:8001).
-3. Enable Bruno's cookie jar (Settings → Cookies → on). Auth is httpOnly-cookie based,
-   so always run **Auth → Login Admin** (or Login Customer) first; later requests reuse the cookie.
+3. Auth uses JWT Bearer tokens: run **Auth → Login Admin** (or Login Customer / Register) first —
+   the response script saves `accessToken` into the active environment, and every protected
+   request automatically sends `Authorization: Bearer {{accessToken}}`.
+   (The API also accepts httpOnly cookies for the web app, and Google OAuth session tokens as Bearer.)
 
 ## Environment variables
 - `baseUrl` — set by environment.
+- `accessToken` — auto-filled by Login/Register response scripts; sent as Bearer on protected requests.
 - `productId` — defaults to seeded `ss-hex-nipple-304`.
 - `variantId` — auto-filled from the **Get Product** response script; run it before Sync Cart / Create Order.
 - `enquiryId`, `orderId`, `addressId`, `filePath` — copy from create/list responses when needed.

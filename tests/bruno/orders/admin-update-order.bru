@@ -7,7 +7,11 @@ meta {
 patch {
   url: {{baseUrl}}/api/admin/orders/{{orderId}}
   body: json
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 body:json {

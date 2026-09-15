@@ -76,9 +76,11 @@ def create_refresh_token(user_id: str) -> str:
     payload = {"sub": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"}
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-def set_auth_cookies(response: Response, user_id: str, email: str):
-    response.set_cookie("access_token", create_access_token(user_id, email), httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+def set_auth_cookies(response: Response, user_id: str, email: str) -> str:
+    access = create_access_token(user_id, email)
+    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
     response.set_cookie("refresh_token", create_refresh_token(user_id), httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+    return access
 
 async def find_user(user_id: str):
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
@@ -101,7 +103,19 @@ async def get_current_user(request: Request):
     if not token:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+            bearer = auth_header[7:]
+            bearer_session = await db.user_sessions.find_one({"session_token": bearer}, {"_id": 0})
+            if bearer_session:
+                expires_at = bearer_session["expires_at"]
+                if isinstance(expires_at, str):
+                    expires_at = datetime.fromisoformat(expires_at)
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > datetime.now(timezone.utc):
+                    user = await find_user(bearer_session["user_id"])
+                    if user:
+                        return user
+            token = bearer
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -237,8 +251,8 @@ async def register(data: RegisterIn, response: Response):
     }
     await db.users.insert_one(dict(user))
     user.pop("password_hash")
-    set_auth_cookies(response, user["user_id"], email)
-    return user
+    token = set_auth_cookies(response, user["user_id"], email)
+    return {**user, "access_token": token}
 
 @api_router.post("/auth/login")
 async def login(data: LoginIn, request: Request, response: Response):
@@ -262,8 +276,8 @@ async def login(data: LoginIn, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     await db.login_attempts.delete_one({"identifier": identifier})
     clean = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
-    set_auth_cookies(response, user["user_id"], email)
-    return clean
+    token = set_auth_cookies(response, user["user_id"], email)
+    return {**clean, "access_token": token}
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
@@ -330,7 +344,7 @@ async def google_session(request: Request, response: Response):
         "created_at": datetime.now(timezone.utc),
     })
     response.set_cookie("session_token", session_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
-    return user
+    return {**user, "session_token": session_token}
 
 
 # ---------------- Products ----------------

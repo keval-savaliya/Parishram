@@ -7,7 +7,11 @@ meta {
 put {
   url: {{baseUrl}}/api/products/{{productId}}
   body: json
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 body:json {

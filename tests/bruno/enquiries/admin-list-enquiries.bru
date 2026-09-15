@@ -7,7 +7,11 @@ meta {
 get {
   url: {{baseUrl}}/api/admin/enquiries
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 script:post-response {

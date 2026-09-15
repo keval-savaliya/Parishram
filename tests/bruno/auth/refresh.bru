@@ -7,5 +7,13 @@ meta {
 post {
   url: {{baseUrl}}/api/auth/refresh
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Refresh normally uses the refresh_token cookie. Bearer here is the access token; use the web flow for cookie refresh.
 }
