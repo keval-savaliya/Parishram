@@ -60,6 +60,9 @@ User supplied DEPENDENCY-MAP / DEVELOPMENT-PLAN / GAP-ANALYSIS / HLD / SCHEMA-IN
 - Fresh startup seeded admin, categories and 16 products on Atlas; all APIs verified against Atlas
 - NOTE: old local data (test enquiry/orders, buyer account, OOS demo variant) did not carry over — cluster starts clean
 
+## Implemented (July 2026) — Cart button on product cards
+- Every product card now has an amber cart button beside Specs / Quote: adds the first in-stock size at its MOQ, toast confirmation, navbar cart badge updates; fully out-of-stock products show an error toast pointing to the quote flow
+
 ## Backlog
 - P0: Replace placeholder logo, images, phone/email/GSTIN with real business data; real product photos per SKU.
 - P1: Pipe spec calculator (weight kg/m + burst pressure → append to quote cart); email notification on enquiry (Resend); PDF quotation download.
