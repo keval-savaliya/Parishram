@@ -665,10 +665,29 @@ async def root():
 
 app.include_router(api_router)
 
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://parishram-sage.vercel.app",
+]
+
+
+def get_cors_origins() -> list[str]:
+    configured_origins = [
+        origin.strip().rstrip("/")
+        for origin in os.environ.get("CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    if "*" in configured_origins:
+        logger.warning("Ignoring wildcard CORS_ORIGINS because credentials are enabled")
+        configured_origins = []
+    return configured_origins or DEFAULT_CORS_ORIGINS
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=get_cors_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
