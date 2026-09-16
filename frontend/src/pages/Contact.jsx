@@ -52,10 +52,10 @@ export default function Contact() {
           <Reveal className="lg:col-span-2">
             <div className="space-y-px border border-slate-200 bg-slate-200">
               {[
-                { icon: MapPin, label: "Works & Office", value: "Plot 24, GIDC Industrial Estate, Rajkot — 360002, Gujarat, India" },
-                { icon: Phone, label: "Phone / WhatsApp", value: "+91 90235 36905" },
-                { icon: Mail, label: "Email", value: "sales@parishramengineering.in" },
-                { icon: Clock, label: "Working Hours", value: "Mon–Sat, 9:00 – 19:00 IST" },
+                { icon: MapPin, label: "Works & Office", value: "SIDC Rd, Veraval, Gujarat 360024, India" },
+                { icon: Phone, label: "Phone / WhatsApp", value: "+91 99799 98408" },
+                { icon: Mail, label: "Email", value: "kpsavaliya1@gmail.com" },
+                { icon: Clock, label: "Working Hours", value: "Open 24 hours" },
               ].map((c) => (
                 <div key={c.label} className="flex gap-4 bg-white p-6" data-testid={`contact-info-${c.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
                   <c.icon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />

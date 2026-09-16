@@ -37,14 +37,14 @@ export const Navbar = () => {
     >
       <div className="hidden border-b border-white/5 md:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 sm:px-6 lg:px-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">
             Manufacturer & Supplier of Auto Parts & S.S. Nipple Pipe Fittings
           </p>
-          <div className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">
+          <div className="flex items-center gap-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
             <span className="flex items-center gap-1.5">
-              <Phone className="h-3 w-3 text-amber-500" /> +91 90235 36905
+              <Phone className="h-3 w-3 text-amber-500" /> +91 99799 98408
             </span>
-            <span>sales@parishramengineering.in</span>
+            <span>kpsavaliya1@gmail.com</span>
           </div>
         </div>
       </div>
@@ -63,7 +63,7 @@ export const Navbar = () => {
                 to={l.to}
                 data-testid={l.testid}
                 className={({ isActive }) =>
-                  `group relative font-mono text-[11px] uppercase tracking-[0.18em] transition-colors duration-200 ${
+                  `group relative font-mono text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-200 ${
                     isActive ? "text-amber-500" : "text-slate-300 hover:text-white"
                   }`
                 }

@@ -2,7 +2,7 @@ import { MessageCircle } from "lucide-react";
 
 // Business WhatsApp number for the Parishram Engineering sales team.
 const WA_LINK =
-  "https://wa.me/919023536905?text=" +
+  "https://wa.me/919979998408?text=" +
   encodeURIComponent("Hello Parishram Engineering, I need a quotation for pipe fittings / auto parts.");
 
 export const WhatsAppCTA = () => (

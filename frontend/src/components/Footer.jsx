@@ -42,26 +42,26 @@ export const Footer = () => (
           <ul className="mt-5 space-y-3.5 text-sm">
             <li className="flex gap-2.5">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-              <span>Plot 24, GIDC Industrial Estate,<br />Rajkot — 360002, Gujarat, India</span>
+              <span>SIDC Rd,<br />Veraval, Gujarat — 360024, India</span>
             </li>
             <li className="flex items-center gap-2.5">
-              <Phone className="h-4 w-4 shrink-0 text-amber-600" /> +91 90235 36905
+              <Phone className="h-4 w-4 shrink-0 text-amber-600" /> +91 99799 98408
             </li>
             <li className="flex items-center gap-2.5">
-              <Mail className="h-4 w-4 shrink-0 text-amber-600" /> sales@parishramengineering.in
+              <Mail className="h-4 w-4 shrink-0 text-amber-600" /> kpsavaliya1@gmail.com
             </li>
             <li className="flex items-center gap-2.5">
-              <Clock className="h-4 w-4 shrink-0 text-amber-600" /> Mon–Sat, 9:00 – 19:00 IST
+              <Clock className="h-4 w-4 shrink-0 text-amber-600" /> Open 24 hours
             </li>
           </ul>
         </div>
       </div>
       <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-600">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">
           © {new Date().getFullYear()} Parishram Engineering. All rights reserved.
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-600">
-          GSTIN: 24XXXXX0000X1Z5 (placeholder)
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">
+          GSTIN: 24CPHPS0238G1ZZ
         </p>
       </div>
     </div>

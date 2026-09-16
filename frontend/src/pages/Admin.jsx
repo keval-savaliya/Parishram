@@ -102,7 +102,8 @@ export default function Admin() {
   const setStatus = async (id, status) => {
     try {
       await api.patch(`/admin/enquiries/${id}`, { status });
-      setEnquiries((prev) => prev.map((e) => (e.enquiry_id === id ? { ...e, status } : e)));
+      const { data } = await api.get("/admin/enquiries");
+      setEnquiries(data);
       toast.success("Status updated");
     } catch (err) {
       toast.error(formatApiError(err));
@@ -112,7 +113,8 @@ export default function Admin() {
   const setOrderStatus = async (id, status) => {
     try {
       await api.patch(`/admin/orders/${id}`, { status });
-      setOrders((prev) => prev.map((o) => (o.order_id === id ? { ...o, status } : o)));
+      const { data } = await api.get("/admin/orders");
+      setOrders(data);
       toast.success("Order status updated");
     } catch (err) {
       toast.error(formatApiError(err));

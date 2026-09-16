@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Plus, ArrowUpRight, ShoppingCart } from "lucide-react";
+import { Plus, Info, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Reveal } from "./Reveal";
 import { useCart } from "../context/CartContext";
@@ -60,17 +60,19 @@ export const ProductCard = ({ product, index = 0 }) => {
           <div className="mt-auto flex gap-2 pt-5">
             <Link
               to={`/products/${product.product_id}`}
-              className="flex h-10 flex-1 items-center justify-center gap-1.5 border border-slate-300 font-mono text-[11px] uppercase tracking-[0.15em] text-slate-700 transition-colors hover:border-slate-900 hover:text-slate-950"
+              className="grid h-10 w-10 shrink-0 place-items-center text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950"
               data-testid={`product-specs-${product.product_id}`}
+              aria-label={`View details for ${product.title}`}
+              title="View details"
             >
-              Specs <ArrowUpRight className="h-3.5 w-3.5" />
+              <Info className="h-[18px] w-[18px]" />
             </Link>
             <button
               onClick={() => add(product)}
               className="flex h-10 flex-1 items-center justify-center gap-1.5 bg-slate-950 font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-white transition-all hover:bg-slate-800 active:scale-95"
               data-testid={`product-card-add-${product.product_id}`}
             >
-              <Plus className="h-3.5 w-3.5" /> Quote
+              <Plus className="h-3.5 w-3.5" /> Quotation
             </button>
             <button
               onClick={addCart}

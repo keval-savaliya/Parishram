@@ -10,14 +10,16 @@ from typing import Optional, List
 
 import bcrypt
 import jwt
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel, EmailStr, Field
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
+from notifications import NotificationPayload, NotificationService
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+notification_service = NotificationService(db.notification_deliveries)
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -234,6 +236,29 @@ class StatusIn(BaseModel):
     status: str
 
 
+def notification_payload(kind: str, document: dict, previous_status: str = "") -> NotificationPayload:
+    is_order = kind == "order"
+    reference = document.get("ref") or document.get("order_id") or document.get("enquiry_id") or ""
+    address = document.get("address") or {}
+    frontend_url = os.environ.get("FRONTEND_URL", "").rstrip("/")
+    path = "/account"
+    return NotificationPayload(
+        kind=kind,
+        reference=reference,
+        event_id=document.get("notification_id") or "",
+        customer_name=document.get("customer_name") or document.get("name") or address.get("name") or "",
+        customer_email=document.get("customer_email") or document.get("email") or "",
+        customer_phone=(address.get("phone") if is_order else document.get("phone")) or "",
+        created_at=document.get("created_at"),
+        items=document.get("items") or [],
+        amount=document.get("total_amount") if is_order else None,
+        status=document.get("status") or "",
+        previous_status=previous_status,
+        notes=document.get("note") or document.get("message") or "",
+        link=f"{frontend_url}{path}" if frontend_url else "",
+    )
+
+
 # ---------------- Auth routes ----------------
 
 @api_router.post("/auth/register")
@@ -410,7 +435,7 @@ async def delete_product(product_id: str, admin=Depends(require_admin)):
 # ---------------- Enquiries ----------------
 
 @api_router.post("/enquiries")
-async def create_enquiry(data: EnquiryIn, request: Request):
+async def create_enquiry(data: EnquiryIn, request: Request, background_tasks: BackgroundTasks):
     user = await get_optional_user(request)
     doc = data.model_dump()
     doc["enquiry_id"] = f"enq_{uuid.uuid4().hex[:10]}"
@@ -419,6 +444,7 @@ async def create_enquiry(data: EnquiryIn, request: Request):
     doc["user_id"] = user["user_id"] if user else None
     doc["created_at"] = datetime.now(timezone.utc)
     await db.enquiries.insert_one(dict(doc))
+    background_tasks.add_task(notification_service.notify_new_quote, notification_payload("quote", doc))
     return {"ok": True, "ref": doc["ref"], "enquiry_id": doc["enquiry_id"]}
 
 @api_router.get("/enquiries/mine")
@@ -430,10 +456,18 @@ async def all_enquiries(admin=Depends(require_admin)):
     return await db.enquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 @api_router.patch("/admin/enquiries/{enquiry_id}")
-async def update_enquiry_status(enquiry_id: str, data: StatusIn, admin=Depends(require_admin)):
-    result = await db.enquiries.update_one({"enquiry_id": enquiry_id}, {"$set": {"status": data.status}})
-    if result.matched_count == 0:
+async def update_enquiry_status(enquiry_id: str, data: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):
+    enquiry = await db.enquiries.find_one({"enquiry_id": enquiry_id}, {"_id": 0})
+    if not enquiry:
         raise HTTPException(status_code=404, detail="Enquiry not found")
+    previous_status = enquiry.get("status", "")
+    result = await db.enquiries.update_one({"enquiry_id": enquiry_id}, {"$set": {"status": data.status}})
+    if result.matched_count and previous_status != data.status:
+        notification_id = f"status_{uuid.uuid4().hex}"
+        await db.enquiries.update_one({"enquiry_id": enquiry_id}, {"$set": {"notification_id": notification_id}})
+        enquiry["status"] = data.status
+        enquiry["notification_id"] = notification_id
+        background_tasks.add_task(notification_service.notify_quote_status, notification_payload("quote", enquiry, previous_status))
     return {"ok": True}
 
 @api_router.get("/admin/stats")
@@ -495,7 +529,7 @@ async def delete_address(address_id: str, user=Depends(get_current_user)):
 ORDER_STATUSES = ["Pending", "Confirmed", "Dispatched", "Delivered", "Cancelled"]
 
 @api_router.post("/orders")
-async def create_order(data: OrderIn, user=Depends(get_current_user)):
+async def create_order(data: OrderIn, background_tasks: BackgroundTasks, user=Depends(get_current_user)):
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
     items = []
@@ -540,6 +574,7 @@ async def create_order(data: OrderIn, user=Depends(get_current_user)):
     }
     await db.orders.insert_one(dict(doc))
     await db.carts.update_one({"user_id": user["user_id"]}, {"$set": {"items": [], "updated_at": datetime.now(timezone.utc)}})
+    background_tasks.add_task(notification_service.notify_new_order, notification_payload("order", doc))
     return {"ok": True, "ref": doc["ref"], "order_id": doc["order_id"], "total_amount": doc["total_amount"]}
 
 @api_router.get("/orders/mine")
@@ -551,7 +586,7 @@ async def all_orders(admin=Depends(require_admin)):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 @api_router.patch("/admin/orders/{order_id}")
-async def update_order_status(order_id: str, data: StatusIn, admin=Depends(require_admin)):
+async def update_order_status(order_id: str, data: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):
     if data.status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status")
     order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
@@ -563,7 +598,14 @@ async def update_order_status(order_id: str, data: StatusIn, admin=Depends(requi
                 {"variants.variant_id": item["variant_id"]},
                 {"$inc": {"variants.$.stock_quantity": item["qty"]}, "$set": {"variants.$.availability": "In Stock"}},
             )
+    previous_status = order.get("status", "")
     await db.orders.update_one({"order_id": order_id}, {"$set": {"status": data.status}})
+    if previous_status != data.status:
+        notification_id = f"status_{uuid.uuid4().hex}"
+        await db.orders.update_one({"order_id": order_id}, {"$set": {"notification_id": notification_id}})
+        order["status"] = data.status
+        order["notification_id"] = notification_id
+        background_tasks.add_task(notification_service.notify_order_status, notification_payload("order", order, previous_status))
     return {"ok": True}
 
 
@@ -724,6 +766,7 @@ async def startup():
     await db.orders.create_index("user_id")
     await db.addresses.create_index("user_id")
     await db.categories.create_index("slug", unique=True)
+    await db.notification_deliveries.create_index("delivery_key", unique=True)
     await seed_admin()
     try:
         init_storage()

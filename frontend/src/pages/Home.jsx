@@ -66,7 +66,7 @@ const Hero = () => {
 
       <motion.div style={{ opacity: fade }} className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-40 sm:px-6 lg:px-8">
         <MaskedLine delay={0.15}>
-          <span className="eyebrow !text-amber-500">Parishram Engineering — Rajkot, Gujarat · Est. 1998</span>
+          <span className="eyebrow !text-amber-500">Parishram Engineering — Rajkot, Gujarat · Est. 1999</span>
         </MaskedLine>
         <h1 className="mt-6 font-display font-black uppercase leading-[0.95] tracking-tight" data-testid="hero-headline">
           <MaskedLine delay={0.3}>

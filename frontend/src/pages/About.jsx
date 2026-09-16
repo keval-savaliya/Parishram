@@ -8,11 +8,10 @@ const IMG = {
 };
 
 const TIMELINE = [
-  { year: "1998", text: "Founded in Rajkot as a two-lathe turning workshop supplying local pump makers." },
-  { year: "2006", text: "Expanded into stainless steel nipple pipe fittings with dedicated threading lines." },
-  { year: "2014", text: "CNC machining cell commissioned; first OEM automotive supply contracts signed." },
-  { year: "2019", text: "ISO 9001:2015 certification and in-house hydro-testing & CMM inspection lab." },
-  { year: "2024", text: "Pan-India distributor network across 14 states; export-grade packing line added." },
+  { year: "1999", text: "Started with bearing cleaning work: rough bearings were cleaned and supplied on a commission basis." },
+  { year: "2010", text: "Moved into stainless steel nipple manufacturing and began building our own product range." },
+  { year: "2018", text: "Introduced CNC machines to improve precision, consistency and production capacity." },
+  { year: "Present", text: "Pan-India distributor network across all states; export-grade packing line added." },
 ];
 
 export default function About() {
@@ -27,7 +26,7 @@ export default function About() {
               Parishram means <span className="text-amber-500">hard work.</span> We machine it into every part.
             </h1>
             <p className="mt-6 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
-              From a two-lathe workshop in 1998 to a CNC-driven manufacturing plant, Parishram
+              From a two-lathe workshop in 1999 to a CNC-driven manufacturing plant, Parishram
               Engineering has grown on one principle: components that pass inspection the first
               time, every time.
             </p>
@@ -35,7 +34,7 @@ export default function About() {
         </div>
       </section>
 
-      <Marquee items={["Est. 1998 — Rajkot", "CNC Turning & Machining", "ISO 9001:2015", "SS 304 · 316 · 316L", "OEM Drawing Production"]} />
+      <Marquee items={["Est. 1999 — Rajkot", "CNC Turning & Machining", "ISO 9001:2015", "SS 304 · 316 · 316L", "OEM Drawing Production"]} />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -80,7 +79,7 @@ export default function About() {
             {TIMELINE.map((t, i) => (
               <Reveal key={t.year} delay={0.05}>
                 <div className="group grid gap-2 border-b border-slate-200 py-7 sm:grid-cols-12 sm:items-center" data-testid={`timeline-${t.year}`}>
-                  <span className="font-display text-3xl font-black text-slate-200 transition-colors group-hover:text-amber-600 sm:col-span-2 sm:text-4xl">{t.year}</span>
+                  <span className="font-display text-3xl font-black text-slate-400 transition-colors group-hover:text-amber-600 sm:col-span-2 sm:text-4xl">{t.year}</span>
                   <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber-700 sm:col-span-2">Phase 0{i + 1}</span>
                   <p className="text-sm leading-relaxed text-slate-600 sm:col-span-8">{t.text}</p>
                 </div>
