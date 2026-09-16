@@ -1,20 +1,24 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import uuid
 import logging
 import requests
+import secrets
+from pathlib import Path
+from urllib.parse import urlencode
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 
+from dotenv import load_dotenv
 import bcrypt
 import jwt
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel, EmailStr, Field
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 from notifications import NotificationPayload, NotificationService
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -29,34 +33,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-# ---------------- Object storage ----------------
-
-STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
-STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "parishram-engineering"
-storage_key = None
+UPLOAD_ROOT = Path(os.environ.get("UPLOAD_DIR", "uploads")).resolve()
 
-def init_storage(force: bool = False):
-    global storage_key
-    if storage_key and not force:
-        return storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    storage_key = resp.json()["storage_key"]
-    return storage_key
+def upload_path(path: str) -> Path:
+    target = (UPLOAD_ROOT / path).resolve()
+    try:
+        target.relative_to(UPLOAD_ROOT)
+    except ValueError:
+        raise ValueError("Invalid upload path")
+    return target
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    resp = requests.put(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key, "Content-Type": content_type}, data=data, timeout=120)
-    resp.raise_for_status()
-    return resp.json()
+    target = upload_path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return {"path": path, "size": len(data), "content_type": content_type}
 
 def get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    target = upload_path(path)
+    return target.read_bytes(), "application/octet-stream"
 
 
 # ---------------- Auth helpers ----------------
@@ -78,11 +74,21 @@ def create_refresh_token(user_id: str) -> str:
     payload = {"sub": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"}
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
+def auth_cookie_options() -> dict:
+    """Use Secure cross-site cookies in production and usable cookies on local HTTP."""
+    configured = os.environ.get("COOKIE_SECURE")
+    if configured is not None:
+        secure = configured.strip().lower() in {"1", "true", "yes"}
+    else:
+        secure = (os.environ.get("FRONTEND_URL", "").strip().lower().startswith("https://"))
+    return {"httponly": True, "secure": secure, "samesite": "none" if secure else "lax", "path": "/"}
+
 def set_auth_cookies(response: Response, user_id: str, email: str):
     access = create_access_token(user_id, email)
     refresh = create_refresh_token(user_id)
-    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    response.set_cookie("refresh_token", refresh, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+    options = auth_cookie_options()
+    response.set_cookie("access_token", access, max_age=3600, **options)
+    response.set_cookie("refresh_token", refresh, max_age=604800, **options)
     return access, refresh
 
 async def find_user(user_id: str):
@@ -156,6 +162,23 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+class OtpRequestIn(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+    password: Optional[str] = Field(default=None, min_length=6)
+    purpose: str = "login"
+
+class OtpRegisterIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+class OtpVerifyIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    password: Optional[str] = Field(default=None, min_length=6)
+    purpose: str = "register"
 
 class VariantIn(BaseModel):
     size: str
@@ -305,19 +328,111 @@ async def login(data: LoginIn, request: Request, response: Response):
     access, refresh = set_auth_cookies(response, user["user_id"], email)
     return {**clean, "access_token": access, "refresh_token": refresh}
 
+@api_router.post("/auth/request-otp")
+async def request_otp(data: OtpRequestIn):
+    email = data.email.lower()
+    if data.purpose == "register" and await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered. Use Login instead")
+    if data.purpose == "reset" and not await db.users.find_one({"email": email}):
+        return {"ok": True}
+    now = datetime.now(timezone.utc)
+    recent = await db.login_otps.find_one({"email": email, "created_at": {"$gt": now - timedelta(minutes=1)}})
+    if recent:
+        raise HTTPException(status_code=429, detail="Please wait before requesting another code")
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    await db.login_otps.delete_many({"email": email})
+    await db.login_otps.insert_one({
+        "email": email,
+        "name": getattr(data, "name", None),
+        "password_hash": hash_password(data.password) if data.password else None,
+        "purpose": data.purpose,
+        "code_hash": hash_password(code),
+        "created_at": now,
+        "expires_at": now + timedelta(minutes=10),
+        "attempts": 0,
+    })
+    if not notification_service.email.enabled:
+        raise HTTPException(status_code=503, detail="Email delivery is not configured")
+    await notification_service.email.send(
+        email,
+        "Your Parishram Engineering sign-in code",
+        f"Your one-time sign-in code is: {code}\n\nThis code expires in 10 minutes. If you did not request it, you can ignore this email.",
+    )
+    return {"ok": True}
+
+@api_router.post("/auth/register-otp")
+async def register_otp(data: OtpRegisterIn):
+    return await request_otp(OtpRequestIn(email=data.email, name=data.name, password=data.password, purpose="register"))
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: OtpRequestIn):
+    return await request_otp(OtpRequestIn(email=data.email, purpose="reset"))
+
+@api_router.post("/auth/verify-otp")
+async def verify_otp(data: OtpVerifyIn, response: Response):
+    email = data.email.lower()
+    otp = await db.login_otps.find_one({"email": email})
+    if not otp:
+        raise HTTPException(status_code=401, detail="Code expired or not requested")
+    expires_at = otp["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        await db.login_otps.delete_one({"_id": otp["_id"]})
+        raise HTTPException(status_code=401, detail="Code expired or not requested")
+    if otp.get("attempts", 0) >= 5:
+        await db.login_otps.delete_one({"_id": otp["_id"]})
+        raise HTTPException(status_code=429, detail="Too many invalid attempts. Request a new code")
+    if not verify_password(data.code, otp["code_hash"]):
+        await db.login_otps.update_one({"_id": otp["_id"]}, {"$inc": {"attempts": 1}})
+        raise HTTPException(status_code=401, detail="Invalid code")
+
+    user = await db.users.find_one({"email": email})
+    purpose = otp.get("purpose", "register")
+    if purpose == "register":
+        if user:
+            raise HTTPException(status_code=400, detail="Email already registered. Use Login instead")
+        if not otp.get("password_hash"):
+            raise HTTPException(status_code=400, detail="Registration password is missing")
+        user = {
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "name": otp.get("name") or email.split("@", 1)[0],
+            "email": email,
+            "role": "customer",
+            "password_hash": otp["password_hash"],
+            "email_verified": True,
+            "auth_provider": "email",
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(dict(user))
+    elif purpose == "reset":
+        if not user or not data.password:
+            raise HTTPException(status_code=400, detail="A new password is required")
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"password_hash": hash_password(data.password), "email_verified": True}})
+        user["password_hash"] = hash_password(data.password)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid OTP purpose")
+
+    await db.login_otps.delete_one({"_id": otp["_id"]})
+    clean = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
+    access, refresh = set_auth_cookies(response, user["user_id"], email)
+    return {**clean, "access_token": access, "refresh_token": refresh}
+
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
     session_token = request.cookies.get("session_token")
     if session_token:
         await db.user_sessions.delete_one({"session_token": session_token})
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
-    response.delete_cookie("session_token", path="/")
+    options = auth_cookie_options()
+    response.delete_cookie("access_token", **options)
+    response.delete_cookie("refresh_token", **options)
+    response.delete_cookie("session_token", **options)
     return {"ok": True}
 
 @api_router.get("/auth/me")
-async def me(user=Depends(get_current_user)):
-    return user
+async def me(user=Depends(get_optional_user)):
+    return user or {"authenticated": False}
 
 @api_router.post("/auth/refresh")
 async def refresh(request: Request, response: Response):
@@ -340,44 +455,105 @@ async def refresh(request: Request, response: Response):
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     access = create_access_token(user["user_id"], user["email"])
-    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie("access_token", access, max_age=3600, **auth_cookie_options())
     return {"ok": True, "access_token": access}
 
-@api_router.post("/auth/google/session")
-async def google_session(request: Request, response: Response):
-    body = await request.json()
-    session_id = body.get("session_id")
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id required")
-    r = requests.get(
-        "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-        headers={"X-Session-ID": session_id}, timeout=10,
+def google_config():
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+    redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI")
+    if not client_id or not client_secret or not redirect_uri:
+        raise HTTPException(status_code=503, detail="Google login is not configured")
+    return client_id, client_secret, redirect_uri
+
+
+def frontend_redirect(path: str) -> str:
+    return f"{os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')}{path}"
+
+
+@api_router.get("/auth/google/start")
+async def google_start():
+    client_id, _, redirect_uri = google_config()
+    state = uuid.uuid4().hex
+    await db.google_oauth_states.insert_one({
+        "state": state,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+    })
+    params = urlencode({
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "select_account",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+
+@api_router.get("/auth/google/callback")
+async def google_callback(code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+    if error or not code or not state:
+        return RedirectResponse(frontend_redirect("/login?google_error=cancelled"))
+
+    client_id, client_secret, redirect_uri = google_config()
+    state_doc = await db.google_oauth_states.find_one_and_delete({"state": state})
+    expires_at = state_doc.get("expires_at") if state_doc else None
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if not state_doc or not expires_at or expires_at <= datetime.now(timezone.utc):
+        return RedirectResponse(frontend_redirect("/login?google_error=expired"))
+
+    token_response = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        },
+        timeout=15,
     )
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid session_id")
-    data = r.json()
-    email = data["email"].lower()
-    user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+    if token_response.status_code != 200:
+        logger.warning("Google token exchange failed: %s", token_response.text)
+        return RedirectResponse(frontend_redirect("/login?google_error=exchange"))
+
+    access_token = token_response.json().get("access_token")
+    if not access_token:
+        return RedirectResponse(frontend_redirect("/login?google_error=token"))
+    profile_response = requests.get(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=15,
+    )
+    if profile_response.status_code != 200:
+        return RedirectResponse(frontend_redirect("/login?google_error=profile"))
+
+    profile = profile_response.json()
+    email = (profile.get("email") or "").lower()
+    if not email or not profile.get("email_verified", False):
+        return RedirectResponse(frontend_redirect("/login?google_error=email"))
+
+    user = await db.users.find_one({"email": email})
     if not user:
         user = {
             "user_id": f"user_{uuid.uuid4().hex[:12]}",
             "email": email,
-            "name": data.get("name", ""),
-            "picture": data.get("picture"),
+            "name": profile.get("name") or email.split("@", 1)[0],
+            "picture": profile.get("picture"),
             "role": "customer",
             "auth_provider": "google",
             "created_at": datetime.now(timezone.utc),
         }
         await db.users.insert_one(dict(user))
-    session_token = data["session_token"]
-    await db.user_sessions.insert_one({
-        "user_id": user["user_id"],
-        "session_token": session_token,
-        "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
-        "created_at": datetime.now(timezone.utc),
-    })
-    response.set_cookie("session_token", session_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
-    return {**user, "session_token": session_token}
+    elif user.get("auth_provider") == "google" and profile.get("picture"):
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"picture": profile["picture"]}})
+
+    redirect = RedirectResponse(frontend_redirect("/account"))
+    set_auth_cookies(redirect, user["user_id"], email)
+    return redirect
 
 
 # ---------------- Products ----------------
@@ -787,11 +963,6 @@ async def startup():
     await db.categories.create_index("slug", unique=True)
     await db.notification_deliveries.create_index("delivery_key", unique=True)
     await seed_admin()
-    try:
-        init_storage()
-        logger.info("Object storage initialized")
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
     if await db.categories.count_documents({}) == 0:
         await db.categories.insert_many(CATEGORIES_SEED)
         logger.info("Seeded categories")

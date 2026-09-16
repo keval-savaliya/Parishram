@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api } from "../lib/api";
+import { api, clearStoredAuthTokens } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -9,18 +9,13 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = useCallback(async () => {
     try {
       const { data } = await api.get("/auth/me");
-      setUser(data);
+      setUser(data?.authenticated === false ? false : data);
     } catch {
       setUser(false);
     }
   }, []);
 
   useEffect(() => {
-    // CRITICAL: returning from OAuth — AuthCallback exchanges session_id first.
-    if (window.location.hash?.includes("session_id=")) {
-      setUser(false);
-      return;
-    }
     checkAuth();
   }, [checkAuth]);
 
@@ -28,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post("/auth/logout");
     } catch {}
+    clearStoredAuthTokens();
     setUser(false);
   };
 

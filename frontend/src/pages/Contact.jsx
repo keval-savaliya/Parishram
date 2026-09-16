@@ -66,9 +66,6 @@ export default function Contact() {
                 </div>
               ))}
             </div>
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">
-              Placeholder contact details — replace with live business information.
-            </p>
           </Reveal>
 
           <Reveal delay={0.1} className="lg:col-span-3">

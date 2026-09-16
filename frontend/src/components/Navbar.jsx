@@ -18,7 +18,7 @@ export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { count, setDrawerOpen } = useCart();
-  const { count: shopCount } = useShopCart();
+  const { productCount: shopProductCount } = useShopCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -30,17 +30,17 @@ export const Navbar = () => {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#0B0F19]/92 backdrop-blur-xl transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 border-b border-white/15 bg-[#0B0F19] transition-all duration-300 ${
         scrolled ? "shadow-2xl shadow-black/30" : ""
       }`}
       data-testid="main-navbar"
     >
       <div className="hidden border-b border-white/5 md:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 sm:px-6 lg:px-8">
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+          <p className="header-readable font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-white">
             Manufacturer & Supplier of Auto Parts & S.S. Nipple Pipe Fittings
           </p>
-          <div className="flex items-center gap-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <div className="header-readable flex items-center gap-5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
             <span className="flex items-center gap-1.5">
               <Phone className="h-3 w-3 text-amber-500" /> +91 99799 98408
             </span>
@@ -64,7 +64,7 @@ export const Navbar = () => {
                 data-testid={l.testid}
                 className={({ isActive }) =>
                   `group relative font-mono text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors duration-200 ${
-                    isActive ? "text-amber-500" : "text-slate-300 hover:text-white"
+                    isActive ? "header-readable text-amber-400" : "header-readable text-white"
                   }`
                 }
               >
@@ -82,9 +82,9 @@ export const Navbar = () => {
               aria-label="Shopping cart"
             >
               <ShoppingCart className="h-[18px] w-[18px]" />
-              {shopCount > 0 && (
+              {shopProductCount > 0 && (
                 <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center bg-white px-1 font-mono text-[10px] font-bold text-slate-950" data-testid="shop-cart-count">
-                  {shopCount}
+                  {shopProductCount}
                 </span>
               )}
             </Link>

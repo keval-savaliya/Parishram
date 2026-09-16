@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogIn, UserPlus } from "lucide-react";
+import { ArrowLeft, LogIn, Mail, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -11,21 +11,52 @@ const inputCls =
   "h-12 w-full border border-white/15 bg-white/5 px-4 font-mono text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-amber-500";
 
 export default function Login() {
+  const [step, setStep] = useState("form");
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const { setUser } = useAuth();
   const navigate = useNavigate();
 
-  const submit = async (e) => {
+  const submitLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-      const payload = mode === "login" ? { email: form.email, password: form.password } : form;
-      const { data } = await api.post(endpoint, payload);
+      const { data } = await api.post("/auth/login", { email, password });
       setUser(data);
-      toast.success(mode === "login" ? "Welcome back" : "Account created");
+      toast.success("Welcome back");
+      navigate("/account");
+    } catch (err) { toast.error(formatApiError(err)); } finally { setLoading(false); }
+  };
+
+  const requestCode = async (e, recovery = false) => {
+    e?.preventDefault();
+    setLoading(true);
+    try {
+      const endpoint = recovery ? "/auth/forgot-password" : "/auth/register-otp";
+      const payload = recovery ? { email } : { name, email, password };
+      await api.post(endpoint, payload);
+      setStep(recovery ? "reset-code" : "register-code");
+      toast.success("Code sent", { description: recovery ? "Use the code to recover your account." : "Check your email for the 6-digit sign-in code." });
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyCode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const purpose = step === "reset-code" ? "reset" : "register";
+      const { data } = await api.post("/auth/verify-otp", { email, code, purpose, password: purpose === "reset" ? newPassword : undefined });
+      setUser(data);
+      toast.success("Welcome back");
       navigate("/account");
     } catch (err) {
       toast.error(formatApiError(err));
@@ -35,9 +66,8 @@ export default function Login() {
   };
 
   const googleLogin = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + "/account";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || window.location.origin;
+    window.location.href = `${backendUrl.replace(/\/$/, "")}/api/auth/google/start`;
   };
 
   return (
@@ -54,61 +84,102 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-px border border-white/10 bg-white/10">
-            {["login", "register"].map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`h-11 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
-                  mode === m ? "bg-amber-600 font-semibold text-white" : "bg-transparent text-slate-400 hover:text-white"
-                }`}
-                data-testid={`auth-mode-${m}`}
-              >
-                {m === "login" ? "Login" : "Register"}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={submit} className="mt-7 space-y-4" data-testid="auth-form">
-            {mode === "register" && (
+          {step === "form" ? (
+            <>
+            {mode !== "reset" && <div className="mt-8 grid grid-cols-2 gap-px border border-white/10 bg-white/10">
+              {["login", "register"].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setMode(item)}
+                  className={`h-11 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${mode === item ? "bg-amber-600 font-semibold text-white" : "bg-transparent text-slate-400 hover:text-white"}`}
+                  data-testid={`auth-mode-${item}`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>}
+            <form onSubmit={mode === "login" ? submitLogin : mode === "reset" ? (e) => requestCode(e, true) : requestCode} className="mt-7 space-y-4" data-testid="auth-form">
+              {mode === "register" && (
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name"
+                  required
+                  className={inputCls}
+                  data-testid="auth-name-input"
+                />
+              )}
               <input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Full name"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder="Email address"
                 required
                 className={inputCls}
-                data-testid="auth-name-input"
+                data-testid="auth-email-input"
               />
-            )}
-            <input
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              type="email"
-              placeholder="Email address"
-              required
-              className={inputCls}
-              data-testid="auth-email-input"
-            />
-            <input
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              type="password"
-              placeholder="Password (min 6 chars)"
-              required
-              minLength={6}
-              className={inputCls}
-              data-testid="auth-password-input"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex h-12 w-full items-center justify-center gap-2 bg-amber-600 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 active:scale-[0.98] disabled:opacity-50"
-              data-testid="auth-submit-button"
-            >
-              {mode === "login" ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-              {loading ? "Please wait…" : mode === "login" ? "Login" : "Create Account"}
-            </button>
-          </form>
+              {mode !== "reset" && <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                placeholder="Password (minimum 6 characters)"
+                required
+                minLength={6}
+                className={inputCls}
+                data-testid="auth-password-input"
+              />}
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex h-12 w-full items-center justify-center gap-2 bg-amber-600 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 active:scale-[0.98] disabled:opacity-50"
+                data-testid="auth-submit-button"
+              >
+                {mode === "login" ? <LogIn className="h-4 w-4" /> : mode === "register" ? <UserPlus className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                {loading ? "Please wait…" : mode === "register" ? "Create account" : mode === "reset" ? "Send recovery code" : "Login"}
+              </button>
+              {mode !== "reset" && <button
+                type="button"
+                onClick={() => { setMode("reset"); setPassword(""); }}
+                disabled={loading}
+                className="w-full font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500 hover:text-amber-500 disabled:opacity-50"
+                data-testid="forgot-password-button"
+              >
+                Forgot password? Reset by email
+              </button>}
+            </form>
+            </>
+          ) : (
+            <form onSubmit={verifyCode} className="mt-7 space-y-4" data-testid="otp-form">
+              {step === "reset-code" && <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" placeholder="New password (minimum 6 characters)" required minLength={6} className={inputCls} />}
+              {step === "reset-code" && <button type="button" onClick={() => requestCode(null, true)} disabled={loading} className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-500">Send recovery code</button>}
+              <p className="font-mono text-xs leading-relaxed text-slate-400">Enter the 6-digit code sent to {email}.</p>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6-digit code"
+                required
+                minLength={6}
+                maxLength={6}
+                className={`${inputCls} text-center tracking-[0.35em]`}
+                data-testid="auth-otp-input"
+              />
+              <button
+                type="submit"
+                disabled={loading || code.length !== 6}
+                className="flex h-12 w-full items-center justify-center gap-2 bg-amber-600 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 active:scale-[0.98] disabled:opacity-50"
+                data-testid="auth-otp-submit-button"
+              >
+                <LogIn className="h-4 w-4" />
+                {loading ? "Verifying…" : "Verify and continue"}
+              </button>
+              <button type="button" onClick={() => { setStep("email"); setCode(""); }} className="flex w-full items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500 hover:text-amber-500">
+                <ArrowLeft className="h-3 w-3" /> Use a different email
+              </button>
+            </form>
+          )}
 
           <div className="my-6 flex items-center gap-4">
             <span className="h-px flex-1 bg-white/10" />

@@ -50,7 +50,19 @@ export const ShopCartProvider = ({ children }) => {
         },
       ];
     });
-    toast.success("Added to cart", { description: `${product.title} — ${variant.size}` });
+    toast.custom((id) => (
+      <button
+        type="button"
+        onClick={() => toast.dismiss(id)}
+        className="flex w-[min(356px,calc(100vw-32px))] cursor-pointer items-start gap-3 border-l-4 border-amber-500 bg-slate-950 px-4 py-3 text-left text-white shadow-xl"
+        aria-label="Dismiss cart notification"
+      >
+        <span>
+          <span className="block font-mono text-xs font-semibold uppercase tracking-[0.15em]">Added to cart</span>
+          <span className="mt-1 block text-xs text-slate-300">{product.title} - {variant.size}</span>
+        </span>
+      </button>
+    ));
   };
 
   const remove = (variant_id) => setItems((prev) => prev.filter((i) => i.variant_id !== variant_id));
@@ -61,10 +73,11 @@ export const ShopCartProvider = ({ children }) => {
   const clear = () => setItems([]);
 
   const count = items.reduce((s, i) => s + i.qty, 0);
+  const productCount = items.length;
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <ShopCartContext.Provider value={{ items, add, remove, updateQty, clear, count, total }}>
+    <ShopCartContext.Provider value={{ items, add, remove, updateQty, clear, count, productCount, total }}>
       {children}
     </ShopCartContext.Provider>
   );

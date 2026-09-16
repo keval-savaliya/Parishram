@@ -15,9 +15,6 @@ export const Footer = () => (
             Manufacturer & Supplier of All Types of Auto Parts and S.S. Nipple Pipe Fittings.
             Precision-machined components for OEM and industrial buyers across India.
           </p>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-600">
-            Logo above is a marked placeholder
-          </p>
         </div>
         <div>
           <h4 className="font-mono text-[11px] uppercase tracking-[0.25em] text-amber-500">Company</h4>

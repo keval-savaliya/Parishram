@@ -39,7 +39,19 @@ export const CartProvider = ({ children }) => {
         },
       ];
     });
-    toast.success("Added to quote cart", { description: product.title });
+    toast.custom((id) => (
+      <button
+        type="button"
+        onClick={() => toast.dismiss(id)}
+        className="flex w-[min(356px,calc(100vw-32px))] cursor-pointer items-start gap-3 border-l-4 border-amber-500 bg-slate-950 px-4 py-3 text-left text-white shadow-xl"
+        aria-label="Dismiss cart notification"
+      >
+        <span>
+          <span className="block font-mono text-xs font-semibold uppercase tracking-[0.15em]">Added to quote cart</span>
+          <span className="mt-1 block text-xs text-slate-300">{product.title}</span>
+        </span>
+      </button>
+    ));
   };
 
   const remove = (product_id) =>
