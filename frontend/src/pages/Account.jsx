@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Download, Edit3, LogOut, MapPin, PackageOpen, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ export default function Account() {
   const [addr, setAddr] = useState(emptyAddr);
   const [editingAddressId, setEditingAddressId] = useState(null);
 
-  const loadAddresses = () => api.get("/addresses").then(({ data }) => {
+  const loadAddresses = useCallback(() => api.get("/addresses").then(({ data }) => {
     setAddresses(data);
     const editId = searchParams.get("edit");
     const address = data.find((item) => item.address_id === editId);
@@ -49,13 +49,13 @@ export default function Account() {
       setAddr({ ...emptyAddr, ...address });
       setShowAddrForm(true);
     }
-  }).catch(() => setAddresses([]));
+  }).catch(() => setAddresses([])), [searchParams]);
 
   useEffect(() => {
     api.get("/enquiries/mine").then(({ data }) => setEnquiries(data)).catch(() => setEnquiries([]));
     api.get("/orders/mine").then(({ data }) => setOrders(data)).catch(() => setOrders([]));
     loadAddresses();
-  }, []);
+  }, [loadAddresses]);
 
   const saveAddress = async (e) => {
     e.preventDefault();
