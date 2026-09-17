@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+import requests
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
@@ -22,7 +25,33 @@ DARK = colors.HexColor("#0b0f19")
 MUTED = colors.HexColor("#64748b")
 LINE = colors.HexColor("#dbe3ec")
 LIGHT_BLUE = colors.HexColor("#eef7ff")
-LOGO_PATH = Path(__file__).resolve().parent.parent / "frontend" / "public" / "logo.png"
+LOCAL_LOGO_PATH = Path(__file__).resolve().parent.parent / "frontend" / "public" / "logo.png"
+
+
+def _logo_image() -> Image | Table:
+    logo_url = os.environ.get("PDF_LOGO_URL", "").strip()
+    if not logo_url:
+        frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+        logo_url = f"{frontend_url}/logo.png" if frontend_url else ""
+
+    if logo_url:
+        try:
+            response = requests.get(logo_url, timeout=5)
+            response.raise_for_status()
+            return Image(BytesIO(response.content), width=22 * mm, height=22 * mm)
+        except requests.RequestException:
+            pass
+
+    if LOCAL_LOGO_PATH.exists():
+        return Image(str(LOCAL_LOGO_PATH), width=22 * mm, height=22 * mm)
+
+    fallback = Table([[Paragraph("P", ParagraphStyle("LogoFallback", fontName="Helvetica-Bold", fontSize=20, textColor=colors.white, alignment=1))]], colWidths=[22 * mm], rowHeights=[22 * mm])
+    fallback.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_BLUE),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOX", (0, 0), (-1, -1), 1, BRAND_BLUE),
+    ]))
+    return fallback
 
 
 def _date(value: Any) -> str:
@@ -63,7 +92,7 @@ def _p(value: Any, style: ParagraphStyle) -> Paragraph:
 
 def _header(document: dict[str, Any], kind: str, internal: bool, styles: dict[str, ParagraphStyle]) -> list[Any]:
     title = "FORMAL QUOTATION" if kind == "quote" and document.get("quotation") else ("QUOTE REQUEST" if kind == "quote" else "ORDER CONFIRMATION")
-    logo = Image(str(LOGO_PATH), width=22 * mm, height=22 * mm) if LOGO_PATH.exists() else Spacer(22 * mm, 22 * mm)
+    logo = _logo_image()
     brand = [
         Paragraph(COMPANY_NAME, ParagraphStyle("Brand", parent=styles["value"], fontName="Helvetica-Bold", fontSize=15, leading=16, textColor=DARK)),
         Paragraph(COMPANY_TAGLINE, styles["small"]),
