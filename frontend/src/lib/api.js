@@ -27,6 +27,21 @@ export function clearStoredAuthTokens() {
   } catch {}
 }
 
+export async function downloadPdf(path, fallbackName) {
+  const response = await api.get(path, { responseType: "blob" });
+  const contentDisposition = response.headers["content-disposition"] || "";
+  const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+  const filename = match?.[1] || fallbackName;
+  const url = window.URL.createObjectURL(response.data);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export const api = axios.create({
   baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
   withCredentials: true,

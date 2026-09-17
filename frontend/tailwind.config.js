@@ -20,6 +20,21 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        brand: {
+          blue: 'hsl(var(--brand-blue))',
+          bright: 'hsl(var(--brand-blue-bright))',
+          deep: 'hsl(var(--brand-blue-deep))',
+          wash: 'hsl(var(--brand-blue-wash))'
+        },
+        // Keep existing amber utility names working while the brand accent is logo blue.
+        amber: {
+          50: 'hsl(var(--brand-blue-wash))',
+          400: 'hsl(var(--brand-blue-bright))',
+          500: 'hsl(var(--brand-blue))',
+          600: 'hsl(var(--brand-blue))',
+          700: 'hsl(var(--brand-blue-deep))',
+          800: 'hsl(var(--brand-blue-deep))'
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

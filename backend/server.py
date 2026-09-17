@@ -17,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 from notifications import NotificationPayload, NotificationService
+from pdf_documents import render_pdf
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -215,12 +216,12 @@ class CartSyncIn(BaseModel):
 
 class AddressIn(BaseModel):
     label: str = "Works"
-    name: str
-    phone: str = ""
-    line1: str
-    city: str
-    state: str
-    pincode: str
+    name: str = Field(min_length=1)
+    phone: str = Field(min_length=1)
+    line1: str = Field(min_length=1)
+    city: str = Field(min_length=1)
+    state: str = Field(min_length=1)
+    pincode: str = Field(min_length=1)
 
 class OrderItemIn(BaseModel):
     variant_id: str
@@ -241,11 +242,11 @@ class EnquiryItem(BaseModel):
     note: str = ""
 
 class EnquiryIn(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     email: EmailStr
-    phone: str = ""
-    company: str = ""
-    message: str = ""
+    phone: str = Field(min_length=1)
+    company: str = Field(min_length=1)
+    message: str = Field(min_length=1)
     items: List[EnquiryItem] = []
 
 class ContactIn(BaseModel):
@@ -627,9 +628,27 @@ async def create_enquiry(data: EnquiryIn, request: Request, background_tasks: Ba
 async def my_enquiries(user=Depends(get_current_user)):
     return await db.enquiries.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
 
+@api_router.get("/enquiries/{enquiry_id}/pdf")
+async def enquiry_pdf(enquiry_id: str, user=Depends(get_current_user)):
+    enquiry = await db.enquiries.find_one({"enquiry_id": enquiry_id}, {"_id": 0})
+    if not enquiry or enquiry.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Quote enquiry not found")
+    content = render_pdf(enquiry, "quote")
+    filename = f"{enquiry.get('ref', enquiry_id)}.pdf"
+    return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 @api_router.get("/admin/enquiries")
 async def all_enquiries(admin=Depends(require_admin)):
     return await db.enquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+@api_router.get("/admin/enquiries/{enquiry_id}/pdf")
+async def admin_enquiry_pdf(enquiry_id: str, admin=Depends(require_admin)):
+    enquiry = await db.enquiries.find_one({"enquiry_id": enquiry_id}, {"_id": 0})
+    if not enquiry:
+        raise HTTPException(status_code=404, detail="Quote enquiry not found")
+    content = render_pdf(enquiry, "quote", internal=True)
+    filename = f"INTERNAL-{enquiry.get('ref', enquiry_id)}.pdf"
+    return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 @api_router.patch("/admin/enquiries/{enquiry_id}")
 async def update_enquiry_status(enquiry_id: str, data: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):
@@ -694,6 +713,16 @@ async def create_address(data: AddressIn, user=Depends(get_current_user)):
     doc.pop("created_at", None)
     return doc
 
+@api_router.put("/addresses/{address_id}")
+async def update_address(address_id: str, data: AddressIn, user=Depends(get_current_user)):
+    result = await db.addresses.update_one(
+        {"address_id": address_id, "user_id": user["user_id"]},
+        {"$set": data.model_dump()},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Address not found")
+    return await db.addresses.find_one({"address_id": address_id, "user_id": user["user_id"]}, {"_id": 0})
+
 @api_router.delete("/addresses/{address_id}")
 async def delete_address(address_id: str, user=Depends(get_current_user)):
     await db.addresses.delete_one({"address_id": address_id, "user_id": user["user_id"]})
@@ -757,9 +786,27 @@ async def create_order(data: OrderIn, background_tasks: BackgroundTasks, user=De
 async def my_orders(user=Depends(get_current_user)):
     return await db.orders.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
 
+@api_router.get("/orders/{order_id}/pdf")
+async def order_pdf(order_id: str, user=Depends(get_current_user)):
+    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order or order.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Order not found")
+    content = render_pdf(order, "order")
+    filename = f"{order.get('ref', order_id)}.pdf"
+    return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 @api_router.get("/admin/orders")
 async def all_orders(admin=Depends(require_admin)):
     return await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+@api_router.get("/admin/orders/{order_id}/pdf")
+async def admin_order_pdf(order_id: str, admin=Depends(require_admin)):
+    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    content = render_pdf(order, "order", internal=True)
+    filename = f"INTERNAL-{order.get('ref', order_id)}.pdf"
+    return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 @api_router.patch("/admin/orders/{order_id}")
 async def update_order_status(order_id: str, data: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):

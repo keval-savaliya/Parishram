@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { LogOut, MapPin, PackageOpen, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Download, Edit3, LogOut, MapPin, PackageOpen, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { api, formatApiError } from "../lib/api";
+import { api, downloadPdf, formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { Reveal } from "../components/Reveal";
 
 export const StatusBadge = ({ status }) => {
   const styles = {
     "Under Review": "border-amber-600/40 bg-amber-50 text-amber-700",
-    "Estimate Ready": "border-blue-600/40 bg-blue-50 text-blue-700",
+    "Estimate Ready": "border-brand-blue/40 bg-brand-wash text-brand-blue",
     Approved: "border-emerald-600/40 bg-emerald-50 text-emerald-700",
     Closed: "border-slate-400/40 bg-slate-100 text-slate-600",
     Pending: "border-amber-600/40 bg-amber-50 text-amber-700",
-    Confirmed: "border-blue-600/40 bg-blue-50 text-blue-700",
-    Dispatched: "border-sky-600/40 bg-sky-50 text-sky-700",
+    Confirmed: "border-brand-blue/40 bg-brand-wash text-brand-blue",
+    Dispatched: "border-brand-blue/40 bg-brand-wash text-brand-blue",
     Delivered: "border-emerald-600/40 bg-emerald-50 text-emerald-700",
     Cancelled: "border-red-600/40 bg-red-50 text-red-600",
   };
@@ -31,14 +31,25 @@ const emptyAddr = { label: "Works", name: "", phone: "", line1: "", city: "", st
 
 export default function Account() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState("quotes");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get("tab") || "quotes");
   const [enquiries, setEnquiries] = useState(null);
   const [orders, setOrders] = useState(null);
   const [addresses, setAddresses] = useState(null);
   const [showAddrForm, setShowAddrForm] = useState(false);
   const [addr, setAddr] = useState(emptyAddr);
+  const [editingAddressId, setEditingAddressId] = useState(null);
 
-  const loadAddresses = () => api.get("/addresses").then(({ data }) => setAddresses(data)).catch(() => setAddresses([]));
+  const loadAddresses = () => api.get("/addresses").then(({ data }) => {
+    setAddresses(data);
+    const editId = searchParams.get("edit");
+    const address = data.find((item) => item.address_id === editId);
+    if (address) {
+      setEditingAddressId(address.address_id);
+      setAddr({ ...emptyAddr, ...address });
+      setShowAddrForm(true);
+    }
+  }).catch(() => setAddresses([]));
 
   useEffect(() => {
     api.get("/enquiries/mine").then(({ data }) => setEnquiries(data)).catch(() => setEnquiries([]));
@@ -49,9 +60,11 @@ export default function Account() {
   const saveAddress = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/addresses", addr);
-      toast.success("Address saved");
+      const path = editingAddressId ? `/addresses/${editingAddressId}` : "/addresses";
+      await api[editingAddressId ? "put" : "post"](path, addr);
+      toast.success(editingAddressId ? "Address updated" : "Address saved");
       setAddr(emptyAddr);
+      setEditingAddressId(null);
       setShowAddrForm(false);
       loadAddresses();
     } catch (err) {
@@ -64,7 +77,21 @@ export default function Account() {
     loadAddresses();
   };
 
+  const editAddress = (address) => {
+    setEditingAddressId(address.address_id);
+    setAddr({ ...emptyAddr, ...address });
+    setShowAddrForm(true);
+  };
+
   const setA = (k) => (e) => setAddr({ ...addr, [k]: e.target.value });
+
+  const downloadDocument = async (path, fallbackName) => {
+    try {
+      await downloadPdf(path, fallbackName);
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 pt-32 lg:pt-40" data-testid="account-page">
@@ -139,7 +166,17 @@ export default function Account() {
                           {new Date(enq.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                         </span>
                       </div>
-                      <StatusBadge status={enq.status} />
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={enq.status} />
+                        <button
+                          onClick={() => downloadDocument(`/enquiries/${enq.enquiry_id}/pdf`, `${enq.ref}.pdf`)}
+                          className="inline-flex h-8 items-center gap-1.5 border border-slate-300 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600 transition-colors hover:border-brand-blue hover:text-brand-blue"
+                          data-testid={`download-quote-pdf-${enq.ref}`}
+                          title="Download quote PDF"
+                        >
+                          <Download className="h-3.5 w-3.5" /> PDF
+                        </button>
+                      </div>
                     </div>
                     <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-4">
                       {enq.items?.map((item) => (
@@ -193,6 +230,14 @@ export default function Account() {
                       <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">{ord.payment_method}</span>
                       <span className="font-display text-lg font-extrabold text-amber-700">{inr(ord.total_amount)}</span>
                     </div>
+                    <button
+                      onClick={() => downloadDocument(`/orders/${ord.order_id}/pdf`, `${ord.ref}.pdf`)}
+                      className="mt-4 inline-flex h-9 items-center gap-1.5 border border-slate-300 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600 transition-colors hover:border-brand-blue hover:text-brand-blue"
+                      data-testid={`download-order-pdf-${ord.ref}`}
+                      title="Download order PDF"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Download Order PDF
+                    </button>
                   </div>
                 ))}
               </div>
@@ -203,7 +248,11 @@ export default function Account() {
         {tab === "addresses" && (
           <div className="mt-8">
             <button
-              onClick={() => setShowAddrForm(!showAddrForm)}
+              onClick={() => {
+                setEditingAddressId(null);
+                setAddr(emptyAddr);
+                setShowAddrForm(!showAddrForm);
+              }}
               className="flex h-10 items-center gap-2 bg-amber-600 px-5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-amber-500"
               data-testid="add-address-button"
             >
@@ -213,13 +262,13 @@ export default function Account() {
               <form onSubmit={saveAddress} className="mt-5 grid gap-3 border border-slate-200 bg-white p-6 sm:grid-cols-2" data-testid="address-form">
                 <input value={addr.label} onChange={setA("label")} placeholder="Label (Works / Plant / Home)" className={inputCls} data-testid="address-label" />
                 <input value={addr.name} onChange={setA("name")} placeholder="Contact name *" required className={inputCls} data-testid="address-name" />
-                <input value={addr.phone} onChange={setA("phone")} placeholder="Phone" className={inputCls} data-testid="address-phone" />
+                <input value={addr.phone} onChange={setA("phone")} placeholder="Phone *" required className={inputCls} data-testid="address-phone" />
                 <input value={addr.line1} onChange={setA("line1")} placeholder="Address line *" required className={inputCls} data-testid="address-line1" />
                 <input value={addr.city} onChange={setA("city")} placeholder="City *" required className={inputCls} data-testid="address-city" />
                 <input value={addr.state} onChange={setA("state")} placeholder="State *" required className={inputCls} data-testid="address-state" />
                 <input value={addr.pincode} onChange={setA("pincode")} placeholder="Pincode *" required className={inputCls} data-testid="address-pincode" />
                 <button type="submit" className="h-11 bg-slate-950 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-white hover:bg-amber-600" data-testid="address-save">
-                  Save Address
+                  {editingAddressId ? "Save Changes" : "Save Address"}
                 </button>
               </form>
             )}
@@ -228,9 +277,14 @@ export default function Account() {
                 <div key={a.address_id} className="border border-slate-200 bg-white p-5" data-testid={`address-${a.address_id}`}>
                   <div className="flex items-start justify-between">
                     <MapPin className="h-4 w-4 text-amber-600" />
-                    <button onClick={() => removeAddress(a.address_id)} className="text-slate-400 hover:text-red-500" data-testid={`address-delete-${a.address_id}`} aria-label="Delete address">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => editAddress(a)} className="text-slate-400 hover:text-brand-blue" data-testid={`address-edit-${a.address_id}`} aria-label="Edit address" title="Edit address">
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => removeAddress(a.address_id)} className="text-slate-400 hover:text-red-500" data-testid={`address-delete-${a.address_id}`} aria-label="Delete address">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-700">{a.label}</p>
                   <p className="mt-1.5 text-sm font-semibold text-slate-900">{a.name}</p>

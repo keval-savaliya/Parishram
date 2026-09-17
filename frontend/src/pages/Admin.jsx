@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, Plus, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { api, formatApiError } from "../lib/api";
+import { api, downloadPdf, formatApiError } from "../lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { StatusBadge } from "./Account";
 
@@ -28,6 +28,14 @@ export default function Admin() {
     api.get("/products").then(({ data }) => setProducts(data)).catch(() => {});
     api.get("/admin/enquiries").then(({ data }) => setEnquiries(data)).catch(() => {});
     api.get("/admin/orders").then(({ data }) => setOrders(data)).catch(() => {});
+  };
+
+  const downloadDocument = async (path, fallbackName) => {
+    try {
+      await downloadPdf(path, fallbackName);
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
   };
 
   useEffect(load, []);
@@ -221,6 +229,14 @@ export default function Admin() {
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusBadge status={enq.status} />
+                    <button
+                      onClick={() => downloadDocument(`/admin/enquiries/${enq.enquiry_id}/pdf`, `INTERNAL-${enq.ref}.pdf`)}
+                      className="inline-flex h-9 items-center gap-1.5 border border-slate-300 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600 transition-colors hover:border-brand-blue hover:text-brand-blue"
+                      data-testid={`admin-download-quote-pdf-${enq.ref}`}
+                      title="Download internal quote PDF"
+                    >
+                      <Download className="h-3.5 w-3.5" /> PDF
+                    </button>
                     <select
                       value={enq.status}
                       onChange={(e) => setStatus(enq.enquiry_id, e.target.value)}
@@ -292,6 +308,14 @@ export default function Admin() {
                   <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-slate-500">{ord.payment_method}{ord.note ? ` · ${ord.note}` : ""}</span>
                   <span className="font-display text-lg font-extrabold text-amber-700" data-testid={`admin-order-total-${ord.ref}`}>{inr(ord.total_amount)}</span>
                 </div>
+                <button
+                  onClick={() => downloadDocument(`/admin/orders/${ord.order_id}/pdf`, `INTERNAL-${ord.ref}.pdf`)}
+                  className="mt-4 inline-flex h-9 items-center gap-1.5 border border-slate-300 px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600 transition-colors hover:border-brand-blue hover:text-brand-blue"
+                  data-testid={`admin-download-order-pdf-${ord.ref}`}
+                  title="Download internal order PDF"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download Internal PDF
+                </button>
               </div>
             ))}
           </div>

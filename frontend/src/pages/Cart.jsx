@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { CheckCircle2, Edit3, Lock, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatApiError } from "../lib/api";
 import { useShopCart } from "../context/ShopCartContext";
@@ -38,8 +38,8 @@ export default function Cart() {
 
   const placeOrder = async () => {
     const address = selected === "new" ? addr : addresses.find((a) => a.address_id === selected);
-    if (!address || !address.name || !address.line1 || !address.city || !address.state || !address.pincode) {
-      toast.error("Please complete the delivery address");
+    if (!address || !address.name || !address.phone || !address.line1 || !address.city || !address.state || !address.pincode) {
+      toast.error("Please complete all delivery address fields");
       return;
     }
     setPlacing(true);
@@ -177,10 +177,20 @@ export default function Cart() {
                       {addresses.map((a) => (
                         <label key={a.address_id} className={`flex cursor-pointer gap-3 border p-4 transition-colors ${selected === a.address_id ? "border-amber-600 bg-amber-50/50" : "border-slate-200"}`} data-testid={`address-option-${a.address_id}`}>
                           <input type="radio" name="addr" checked={selected === a.address_id} onChange={() => setSelected(a.address_id)} className="mt-1" />
-                          <span className="text-sm text-slate-700">
+                          <span className="min-w-0 flex-1 text-sm text-slate-700">
                             <span className="font-semibold">{a.name}</span> · {a.label}
                             <span className="block font-mono text-xs text-slate-500">{a.line1}, {a.city}, {a.state} — {a.pincode}</span>
                           </span>
+                          <Link
+                            to={`/account?tab=addresses&edit=${a.address_id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="grid h-8 w-8 shrink-0 place-items-center text-slate-400 transition-colors hover:text-brand-blue"
+                            data-testid={`cart-edit-address-${a.address_id}`}
+                            aria-label={`Edit ${a.label} address`}
+                            title="Edit address"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Link>
                         </label>
                       ))}
                       <label className={`flex cursor-pointer gap-3 border p-4 transition-colors ${selected === "new" ? "border-amber-600 bg-amber-50/50" : "border-slate-200"}`} data-testid="address-option-new">
@@ -189,12 +199,12 @@ export default function Cart() {
                       </label>
                       {selected === "new" && (
                         <div className="grid gap-3 border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2" data-testid="new-address-form">
-                          <input value={addr.name} onChange={set("name")} placeholder="Contact name *" className={inputCls} data-testid="addr-name" />
-                          <input value={addr.phone} onChange={set("phone")} placeholder="Phone" className={inputCls} data-testid="addr-phone" />
-                          <input value={addr.line1} onChange={set("line1")} placeholder="Address line *" className={`${inputCls} sm:col-span-2`} data-testid="addr-line1" />
-                          <input value={addr.city} onChange={set("city")} placeholder="City *" className={inputCls} data-testid="addr-city" />
-                          <input value={addr.state} onChange={set("state")} placeholder="State *" className={inputCls} data-testid="addr-state" />
-                          <input value={addr.pincode} onChange={set("pincode")} placeholder="Pincode *" className={inputCls} data-testid="addr-pincode" />
+                          <input value={addr.name} onChange={set("name")} placeholder="Contact name *" required className={inputCls} data-testid="addr-name" />
+                          <input value={addr.phone} onChange={set("phone")} placeholder="Phone *" required className={inputCls} data-testid="addr-phone" />
+                          <input value={addr.line1} onChange={set("line1")} placeholder="Address line *" required className={`${inputCls} sm:col-span-2`} data-testid="addr-line1" />
+                          <input value={addr.city} onChange={set("city")} placeholder="City *" required className={inputCls} data-testid="addr-city" />
+                          <input value={addr.state} onChange={set("state")} placeholder="State *" required className={inputCls} data-testid="addr-state" />
+                          <input value={addr.pincode} onChange={set("pincode")} placeholder="Pincode *" required className={inputCls} data-testid="addr-pincode" />
                         </div>
                       )}
                       <textarea

@@ -9,7 +9,7 @@ export const LogoType = ({ light = true, compact = false }) => (
     <span
       className={`font-display font-extrabold tracking-tight uppercase ${
         compact ? "text-sm" : "text-base sm:text-lg"
-      } ${light ? "text-sky-400" : "text-sky-700"}`}
+      } ${light ? "text-brand-bright" : "text-brand-blue"}`}
     >
       Parishram
     </span>

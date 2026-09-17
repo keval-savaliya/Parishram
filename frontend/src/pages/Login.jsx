@@ -30,7 +30,10 @@ export default function Login() {
       setUser(data);
       toast.success("Welcome back");
       navigate("/account");
-    } catch (err) { toast.error(formatApiError(err)); } finally { setLoading(false); }
+    } catch (err) { toast.error(formatApiError(err)); } finally {
+      setPassword("");
+      setLoading(false);
+    }
   };
 
   const requestCode = async (e, recovery = false) => {
@@ -40,6 +43,7 @@ export default function Login() {
       const endpoint = recovery ? "/auth/forgot-password" : "/auth/register-otp";
       const payload = recovery ? { email } : { name, email, password };
       await api.post(endpoint, payload);
+      if (!recovery) setPassword("");
       setStep(recovery ? "reset-code" : "register-code");
       toast.success("Code sent", { description: recovery ? "Use the code to recover your account." : "Check your email for the 6-digit sign-in code." });
     } catch (err) {
@@ -55,6 +59,7 @@ export default function Login() {
     try {
       const purpose = step === "reset-code" ? "reset" : "register";
       const { data } = await api.post("/auth/verify-otp", { email, code, purpose, password: purpose === "reset" ? newPassword : undefined });
+      setNewPassword("");
       setUser(data);
       toast.success("Welcome back");
       navigate("/account");
@@ -123,6 +128,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
                 placeholder="Password (minimum 6 characters)"
                 required
                 minLength={6}
@@ -151,7 +157,7 @@ export default function Login() {
             </>
           ) : (
             <form onSubmit={verifyCode} className="mt-7 space-y-4" data-testid="otp-form">
-              {step === "reset-code" && <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" placeholder="New password (minimum 6 characters)" required minLength={6} className={inputCls} />}
+              {step === "reset-code" && <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" autoComplete="new-password" placeholder="New password (minimum 6 characters)" required minLength={6} className={inputCls} />}
               {step === "reset-code" && <button type="button" onClick={() => requestCode(null, true)} disabled={loading} className="font-mono text-[10px] uppercase tracking-[0.18em] text-amber-500">Send recovery code</button>}
               <p className="font-mono text-xs leading-relaxed text-slate-400">Enter the 6-digit code sent to {email}.</p>
               <input

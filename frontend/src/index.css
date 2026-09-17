@@ -4,6 +4,10 @@
 
 @layer base {
     :root {
+        --brand-blue: 211 93% 48%;
+        --brand-blue-bright: 190 88% 53%;
+        --brand-blue-deep: 226 89% 29%;
+        --brand-blue-wash: 211 100% 96%;
         --background: 210 40% 98%;
         --foreground: 222 47% 11%;
         --card: 0 0% 100%;
@@ -16,14 +20,14 @@
         --secondary-foreground: 222 47% 11%;
         --muted: 214 32% 93%;
         --muted-foreground: 215 16% 47%;
-        --accent: 32 95% 44%;
+        --accent: var(--brand-blue);
         --accent-foreground: 0 0% 100%;
         --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 100%;
         --border: 214 32% 89%;
         --input: 214 32% 85%;
-        --ring: 32 95% 44%;
-        --chart-1: 32 95% 44%;
+        --ring: var(--brand-blue);
+        --chart-1: var(--brand-blue);
         --chart-2: 222 47% 11%;
         --chart-3: 215 16% 47%;
         --chart-4: 43 74% 66%;
@@ -43,7 +47,7 @@
         @apply bg-background text-foreground font-sans antialiased;
     }
     ::selection {
-        background: #d97706;
+        background: hsl(var(--brand-blue));
         color: #fff;
     }
     ::-webkit-scrollbar {
@@ -58,7 +62,7 @@
         border: 2px solid #0b0f19;
     }
     ::-webkit-scrollbar-thumb:hover {
-        background: #d97706;
+        background: hsl(var(--brand-blue));
     }
 }
 

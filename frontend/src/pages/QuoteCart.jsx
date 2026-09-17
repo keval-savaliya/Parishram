@@ -28,8 +28,8 @@ export default function QuoteCart() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email) {
-      toast.error("Name and email are required");
+    if (!form.name || !form.email || !form.phone || !form.company || !form.message) {
+      toast.error("Please complete all required fields");
       return;
     }
     setSending(true);
@@ -156,15 +156,16 @@ export default function QuoteCart() {
               <div className="sticky top-32 border border-slate-200 bg-white p-7">
                 <h2 className="font-display text-xl font-extrabold uppercase tracking-tight text-slate-900">Your Details</h2>
                 <div className="mt-6 space-y-4">
-                  <input value={form.name} onChange={set("name")} placeholder="Full name *" className={inputCls} data-testid="quote-name-input" />
-                  <input value={form.email} onChange={set("email")} type="email" placeholder="Email *" className={inputCls} data-testid="quote-email-input" />
-                  <input value={form.phone} onChange={set("phone")} placeholder="Phone / WhatsApp" className={inputCls} data-testid="quote-phone-input" />
-                  <input value={form.company} onChange={set("company")} placeholder="Company name" className={inputCls} data-testid="quote-company-input" />
+                  <input value={form.name} onChange={set("name")} placeholder="Full name *" required className={inputCls} data-testid="quote-name-input" />
+                  <input value={form.email} onChange={set("email")} type="email" placeholder="Email *" required className={inputCls} data-testid="quote-email-input" />
+                  <input value={form.phone} onChange={set("phone")} placeholder="Phone / WhatsApp *" required className={inputCls} data-testid="quote-phone-input" />
+                  <input value={form.company} onChange={set("company")} placeholder="Company name *" required className={inputCls} data-testid="quote-company-input" />
                   <textarea
                     value={form.message}
                     onChange={set("message")}
                     rows={4}
-                    placeholder="Delivery location, timeline, GST details…"
+                    placeholder="Delivery location, timeline, GST details… *"
+                    required
                     className="w-full border border-slate-300 bg-white px-4 py-3 font-mono text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-amber-600"
                     data-testid="quote-message-input"
                   />
